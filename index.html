@@ -81,6 +81,11 @@
   .small{font-size:10px;color:var(--ink-dim);text-align:center;margin-top:6px;}
   .test-link{font-size:10px;color:var(--ink-dim);text-align:center;margin-top:10px;
     text-decoration:underline;cursor:pointer;}
+  .test-link.ok{color:var(--green);text-decoration:none;font-weight:600;}
+  .test-link.err{color:var(--red);text-decoration:none;font-weight:600;}
+  .btn.ok{background:var(--green);color:var(--bg);}
+  .btn.err{background:var(--red);color:var(--bg);}
+  .btn[disabled]{opacity:.7;cursor:default;}
 </style>
 </head>
 <body>
@@ -206,6 +211,12 @@
     </div>
 
     <button class="btn primary" id="btnSaveSettings">Zapisz i zaktualizuj kalendarz</button>
+
+    <div class="divider" style="margin-bottom:10px;">
+      <div class="label" style="margin-bottom:10px;">Kopia zapasowa</div>
+      <button class="btn ghost" id="btnExportExcel">Eksportuj do Excela (.xlsx, z wykresami)</button>
+    </div>
+
     <button class="btn ghost" id="btnCloseSettings">Zamknij</button>
     <div class="test-link" id="btnTestSave">Test połączenia z Arkuszem</div>
   </div>
@@ -643,19 +654,212 @@ document.getElementById('btnSaveSettings').addEventListener('click', async () =>
 });
 
 document.getElementById('btnTestSave').addEventListener('click', async () => {
+  const el = document.getElementById('btnTestSave');
+  const original = 'Test połączenia z Arkuszem';
   if(!isGasConfigured()){ alert('Wklej najpierw GAS_URL w kodzie.'); return; }
+  el.className = 'test-link';
+  el.textContent = 'Sprawdzam...';
   try{
     const res = await fetch(GAS_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({key:'TEST', value:'HELLO_'+Date.now()})
     });
-    const text = await res.text();
-    alert('Status: ' + res.status + '\nOdpowiedź: ' + text);
+    if(res.status === 200){
+      el.className = 'test-link ok';
+      el.textContent = '✓ Połączenie z Arkuszem działa (200)';
+    } else {
+      el.className = 'test-link err';
+      el.textContent = '✗ Arkusz odpowiedział błędem (status ' + res.status + ')';
+    }
   }catch(err){
-    alert('Fetch się nie wykonał: ' + err.message);
+    el.className = 'test-link err';
+    el.textContent = '✗ Brak połączenia: ' + err.message;
   }
+  setTimeout(() => { el.className = 'test-link'; el.textContent = original; }, 4000);
 });
+
+// ---------- EKSPORT DO EXCELA (KOPIA ZAPASOWA) ----------
+let exceljsLoadPromise = null;
+function loadExcelJS(){
+  if(window.ExcelJS) return Promise.resolve();
+  if(exceljsLoadPromise) return exceljsLoadPromise;
+  exceljsLoadPromise = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('nie udało się wczytać biblioteki Excel (brak sieci?)'));
+    document.head.appendChild(s);
+  });
+  return exceljsLoadPromise;
+}
+
+function buildFullSeriesForExport(period){
+  const list = sortedMeasurements();
+  const groups = {};
+  const order = [];
+  list.forEach(m => {
+    let key;
+    if(period === 'D') key = m.data;
+    else if(period === 'T') key = isoWeekKey(m.data);
+    else key = monthKey(m.data);
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(m.waga);
+  });
+  return order.map(k => {
+    const vals = groups[k];
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    return {label:k, value: round2(avg)};
+  });
+}
+
+function buildExportChartSVG(period, W, H){
+  const series = buildFullSeriesForExport(period);
+  const cel = state.settings.cel;
+  const periodLabel = period==='D' ? 'dzień' : period==='T' ? 'tydzień' : 'miesiąc';
+  if(series.length === 0){
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="100%" height="100%" fill="#1b232a"/><text x="${W/2}" y="${H/2}" font-size="16" fill="#8fa0ab" text-anchor="middle">Brak danych</text></svg>`;
+  }
+  const values = series.map(s=>s.value);
+  const maxV = Math.max(...values, cel) + 0.5;
+  const minV = Math.min(...values, cel) - 0.5;
+  const padL = 50, padR = 24, padT = 36, padB = 50;
+  const w = W - padL - padR, h = H - padT - padB;
+  const x = i => padL + (series.length===1 ? w/2 : (i/(series.length-1))*w);
+  const y = v => padT + h - ((v-minV)/(maxV-minV))*h;
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Arial, sans-serif">`;
+  s += `<rect width="100%" height="100%" fill="#1b232a"/>`;
+  s += `<text x="${W/2}" y="20" font-size="15" fill="#e8edf1" text-anchor="middle">Waga PF — wykres (${periodLabel})</text>`;
+  s += `<text x="14" y="${padT+6}" font-size="12" fill="#8fa0ab">${maxV.toFixed(1)}</text>`;
+  s += `<text x="14" y="${padT+h+2}" font-size="12" fill="#8fa0ab">${minV.toFixed(1)}</text>`;
+  const celY = y(cel);
+  s += `<line x1="${padL}" y1="${celY}" x2="${W-padR}" y2="${celY}" stroke="#4caf7d" stroke-width="1.5" stroke-dasharray="6,4"/>`;
+  s += `<text x="${W-padR}" y="${celY-6}" font-size="12" fill="#4caf7d" text-anchor="end">cel ${cel}</text>`;
+  const points = series.map((p,i) => `${x(i)},${y(p.value)}`).join(' ');
+  s += `<polyline points="${points}" fill="none" stroke="#5b9bd5" stroke-width="2.5"/>`;
+  series.forEach((p,i) => {
+    const isLast = i === series.length-1;
+    s += `<circle cx="${x(i)}" cy="${y(p.value)}" r="${isLast?5:3.5}" fill="${isLast?'#e8a33d':'#5b9bd5'}"/>`;
+  });
+  const labelEvery = Math.max(1, Math.ceil(series.length/12));
+  series.forEach((p,i) => {
+    if(i % labelEvery === 0 || i === series.length-1){
+      s += `<text x="${x(i)}" y="${H-16}" font-size="11" fill="#8fa0ab" text-anchor="middle">${shortLabel(p.label, period)}</text>`;
+    }
+  });
+  s += `</svg>`;
+  return s;
+}
+
+function svgToPngBase64(svgString, W, H){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const svgBlob = new Blob([svgString], {type:'image/svg+xml;charset=utf-8'});
+    const url = URL.createObjectURL(svgBlob);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, W, H);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png').split(',')[1]);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('nie udało się wyrenderować wykresu')); };
+    img.src = url;
+  });
+}
+
+async function exportToExcel(){
+  const btn = document.getElementById('btnExportExcel');
+  const original = 'Eksportuj do Excela (.xlsx, z wykresami)';
+  btn.disabled = true;
+  btn.classList.remove('ok','err');
+  btn.textContent = 'Wczytywanie biblioteki...';
+  try{
+    await loadExcelJS();
+    btn.textContent = 'Generuję plik...';
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Waga PF';
+    wb.created = new Date();
+
+    const wsHist = wb.addWorksheet('Historia');
+    wsHist.columns = [
+      {header:'Data', key:'data', width:12},
+      {header:'Godzina', key:'godzina', width:10},
+      {header:'Pora', key:'pora', width:10},
+      {header:'Waga [kg]', key:'waga', width:12},
+      {header:'Δ poprzedni [kg]', key:'deltaPrev', width:16},
+      {header:'Δ od startu [kg]', key:'deltaStart', width:16}
+    ];
+    wsHist.getRow(1).font = {bold:true};
+    withDeltas().forEach(r => {
+      wsHist.addRow({
+        data: r.data, godzina: r.godzina, pora: r.pora==='R' ? 'Rano' : 'Wieczór',
+        waga: r.waga, deltaPrev: r.deltaPrev, deltaStart: r.deltaStart
+      });
+    });
+    wsHist.getColumn('waga').numFmt = '0.00';
+    wsHist.getColumn('deltaPrev').numFmt = '+0.00;-0.00';
+    wsHist.getColumn('deltaStart').numFmt = '+0.00;-0.00';
+
+    const wsSet = wb.addWorksheet('Ustawienia');
+    wsSet.columns = [{header:'Parametr', key:'k', width:28},{header:'Wartość', key:'v', width:24}];
+    wsSet.getRow(1).font = {bold:true};
+    wsSet.addRows([
+      {k:'Waga startowa [kg]', v: state.settings.startWaga},
+      {k:'Data startu', v: state.settings.startData},
+      {k:'Waga docelowa [kg]', v: state.settings.cel},
+      {k:'Wzrost [cm]', v: state.settings.wzrost},
+      {k:'Przypomnienie rano', v: state.reminders.rano.enabled ? ('włączone, ' + state.reminders.rano.time) : 'wyłączone'},
+      {k:'Przypomnienie wieczór', v: state.reminders.wieczor.enabled ? ('włączone, ' + state.reminders.wieczor.time) : 'wyłączone'},
+      {k:'Data eksportu', v: new Date().toLocaleString('pl-PL')}
+    ]);
+
+    const wsChart = wb.addWorksheet('Wykresy');
+    const W = 900, H = 360;
+    const scale = 0.6;
+    let rowCursor = 0; // 0-based "next free row"
+    for(const p of ['D','T','M']){
+      const label = p==='D' ? 'Dzień' : p==='T' ? 'Tydzień' : 'Miesiąc';
+      const labelRow1 = rowCursor + 1; // getCell/getRow są 1-based
+      wsChart.getCell(labelRow1, 1).value = 'Wykres: ' + label;
+      wsChart.getRow(labelRow1).font = {bold:true, size:13};
+      rowCursor += 1;
+      const svg = buildExportChartSVG(p, W, H);
+      const base64 = await svgToPngBase64(svg, W, H);
+      const imgId = wb.addImage({base64, extension:'png'});
+      wsChart.addImage(imgId, {
+        tl: {col:0, row: rowCursor}, // kotwice obrazków SĄ 0-based
+        ext: {width: W*scale, height: H*scale}
+      });
+      rowCursor += Math.ceil((H*scale)/20) + 2;
+    }
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'waga-pf-backup-' + new Date().toISOString().slice(0,10) + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+    btn.classList.add('ok');
+    btn.textContent = '✓ Pobrano plik .xlsx';
+  }catch(err){
+    console.error(err);
+    btn.classList.add('err');
+    btn.textContent = '✗ Błąd eksportu';
+    alert('Nie udało się wygenerować pliku Excel: ' + err.message);
+  } finally {
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; btn.classList.remove('ok','err'); }, 3500);
+  }
+}
+document.getElementById('btnExportExcel').addEventListener('click', exportToExcel);
 
 // ---------- START ----------
 function render(){
