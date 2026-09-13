@@ -56,6 +56,21 @@ Już ustawione na deployment `@1` istniejącego projektu Apps Script.
   cykliczne wydarzenia w Kalendarzu Google (skrypt działa "jako właściciel",
   więc ma dostęp do jego kalendarza bez dodatkowego OAuth we frontendzie).
 
+## Zakładka Trening
+Przełącznik u góry ⚖️ Waga | 💪 Trening — osobny pager Dashboard/Historia/Nowy
+wpis dla ćwiczeń, dane w tym samym magazynie klucz-wartość (klucz `state`,
+pola `exercises`/`workouts`).
+- **Typy ćwiczeń**: `czas` (sekundy, np. Deska — metryka dnia = najlepsza
+  seria), `liczba` (powtórzenia, np. Pompki/Przysiady/Brzuszki — metryka dnia
+  = suma serii), `cardio` (Orbitrek — czas [min] + dystans [km] + poziom,
+  każda metryka ma osobny wykres/rekord/cel).
+- Wpis dnia to lista serii (np. 15+15+10), nie pojedyncza wartość.
+- Zarządzanie ćwiczeniami (dodaj/edytuj/usuń, cel) — w Ustawieniach.
+- Trzecie przypomnienie w Kalendarzu ("Trening") obok rano/wieczór wagi,
+  domyślnie 20:00, jeden event dziennie (nie per ćwiczenie).
+- Eksport do Excela (Ustawienia → Kopia zapasowa) dorzuca zakładki
+  "Trening - Historia", "Trening - Ćwiczenia", "Trening - Wykresy".
+
 ## Znane pułapki (już zaadresowane w kodzie, ale warto wiedzieć)
 - POST z fetch() używa `Content-Type: text/plain;charset=utf-8` — omija to
   przekierowanie 302 Apps Script (które zamienia POST na GET) i CORS

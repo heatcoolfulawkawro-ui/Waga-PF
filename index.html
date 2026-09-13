@@ -86,6 +86,30 @@
   .btn.ok{background:var(--green);color:var(--bg);}
   .btn.err{background:var(--red);color:var(--bg);}
   .btn[disabled]{opacity:.7;cursor:default;}
+  .mode-switch{display:flex;gap:4px;padding:0 16px 10px;}
+  .mode-switch button{flex:1;font-size:13px;font-weight:600;border:none;background:var(--panel);
+    color:var(--ink-dim);padding:9px;border-radius:9px;cursor:pointer;}
+  .mode-switch button.active{background:var(--amber);color:var(--bg);}
+  .hidden-mode{display:none;}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;
+    -webkit-overflow-scrolling:touch;}
+  .chips::-webkit-scrollbar{display:none;}
+  .chip{flex:0 0 auto;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--panel);
+    color:var(--ink-dim);padding:7px 13px;border-radius:16px;cursor:pointer;white-space:nowrap;}
+  .chip.active{background:var(--amber);border-color:var(--amber);color:var(--bg);}
+  .serie-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .serie-row input{flex:1;}
+  .serie-row .serie-num{font-size:12px;color:var(--ink-dim);width:20px;flex:0 0 auto;}
+  .serie-row .icon-btn{flex:0 0 auto;}
+  .preview{font-size:12px;color:var(--ink-dim);text-align:center;margin:4px 0 12px;}
+  .preview b{color:var(--ink);}
+  .exercise-row{display:flex;justify-content:space-between;align-items:center;
+    padding:8px 0;border-top:1px solid var(--line);}
+  .exercise-row:first-child{border-top:none;}
+  .exercise-row .name{font-size:13px;font-weight:600;}
+  .exercise-row .meta{font-size:10px;color:var(--ink-dim);}
+  select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;
+    padding:9px;color:var(--ink);font-size:15px;}
 </style>
 </head>
 <body>
@@ -98,7 +122,14 @@
   </div>
 </div>
 
-<div class="dots">
+<div class="mode-switch">
+  <button class="active" id="btnModeWaga">⚖️ Waga</button>
+  <button id="btnModeTrening">💪 Trening</button>
+</div>
+
+<div id="modeWaga">
+
+<div class="dots" id="dotsWaga">
   <span class="dot active" data-i="0"></span>
   <span class="dot" data-i="1"></span>
   <span class="dot" data-i="2"></span>
@@ -179,6 +210,87 @@
 
 </div>
 
+</div>
+
+<div id="modeTrening" class="hidden-mode">
+
+<div class="dots" id="dotsTrening">
+  <span class="dot active" data-i="0"></span>
+  <span class="dot" data-i="1"></span>
+  <span class="dot" data-i="2"></span>
+</div>
+
+<div class="tabs" id="tabsTrening">
+
+  <!-- TAB 0: DASHBOARD TRENINGU -->
+  <section class="tab" id="tabTDashboard">
+    <div class="chips" id="exerciseChips"></div>
+
+    <div id="metricChipsWrap" style="display:none;">
+      <div class="chips" id="metricChips"></div>
+    </div>
+
+    <div class="card">
+      <div class="row3">
+        <div><div class="label">Ostatni</div><div class="big" id="tLast">-</div></div>
+        <div><div class="label">Rekord</div><div class="big" id="tPB">-</div></div>
+        <div><div class="label">Cel</div><div class="big" id="tCel">-</div></div>
+      </div>
+      <div class="divider" id="tProgressWrap">
+        <div class="bar"><div class="g" id="tBarGreen"></div><div class="r" id="tBarRed"></div></div>
+        <div class="barlabels">
+          <span class="neg" id="tPctDone">0% wykonane</span>
+          <span class="pos" id="tPctLeft">100% zostało</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card2">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span class="label">Wykres</span>
+        <div class="period-toggle" id="periodToggleT">
+          <button data-p="D">D</button>
+          <button data-p="T" class="active">T</button>
+          <button data-p="M">M</button>
+        </div>
+      </div>
+      <svg id="chartSvgT" viewBox="0 0 300 130" style="width:100%;height:150px;"></svg>
+    </div>
+  </section>
+
+  <!-- TAB 1: HISTORIA TRENINGU -->
+  <section class="tab" id="tabTHistory">
+    <div class="label" style="margin-bottom:8px;">Historia treningów</div>
+    <select id="historyFilterExercise" style="margin-bottom:10px;"></select>
+    <div id="historyTableWrapT"></div>
+  </section>
+
+  <!-- TAB 2: NOWY WPIS TRENINGU -->
+  <section class="tab" id="tabTAdd">
+    <div class="chips" id="addExerciseChips"></div>
+
+    <div class="card">
+      <div class="toggle-row">
+        <span class="label">Data</span>
+        <input type="date" id="inpTData" style="width:auto;">
+      </div>
+      <div class="toggle-row" style="margin-bottom:0;">
+        <span class="label">Godzina</span>
+        <input type="time" id="inpTGodzina" style="width:auto;">
+      </div>
+    </div>
+
+    <div id="seriesFormWrap" class="card2"></div>
+
+    <button class="btn primary" id="btnTSave">Zapisz wpis</button>
+    <button class="btn danger" id="btnTDelete" style="display:none;">Usuń wpis</button>
+    <button class="btn ghost" id="btnTCancelEdit" style="display:none;">Anuluj edycję</button>
+  </section>
+
+</div>
+
+</div>
+
 <!-- SETTINGS MODAL -->
 <div class="modal-bg hidden" id="settingsModal">
   <div class="modal">
@@ -206,11 +318,23 @@
         <span style="font-size:13px;">Wieczór</span>
         <button class="switch" id="swWieczor"><span class="knob"></span></button>
       </div>
-      <input type="time" id="timeWieczor" style="margin-bottom:6px;">
+      <input type="time" id="timeWieczor" style="margin-bottom:14px;">
+
+      <div class="toggle-row">
+        <span style="font-size:13px;">Trening</span>
+        <button class="switch" id="swTrening"><span class="knob"></span></button>
+      </div>
+      <input type="time" id="timeTrening" style="margin-bottom:6px;">
       <div class="small">Wyłączony przełącznik = wydarzenie usunięte z kalendarza</div>
     </div>
 
     <button class="btn primary" id="btnSaveSettings">Zapisz i zaktualizuj kalendarz</button>
+
+    <div class="divider" style="margin-bottom:10px;">
+      <div class="label" style="margin-bottom:10px;">Ćwiczenia</div>
+      <div id="exerciseManageList"></div>
+      <button class="btn ghost" id="btnAddExercise" style="margin-top:8px;">+ Dodaj ćwiczenie</button>
+    </div>
 
     <div class="divider" style="margin-bottom:10px;">
       <div class="label" style="margin-bottom:10px;">Kopia zapasowa</div>
@@ -219,6 +343,46 @@
 
     <button class="btn ghost" id="btnCloseSettings">Zamknij</button>
     <div class="test-link" id="btnTestSave">Test połączenia z Arkuszem</div>
+  </div>
+</div>
+
+<!-- NOWE / EDYCJA ĆWICZENIA MODAL -->
+<div class="modal-bg hidden" id="exerciseModal">
+  <div class="modal">
+    <h3 id="exerciseModalTitle">Nowe ćwiczenie</h3>
+    <div class="field">
+      <div class="label" style="margin-bottom:4px;">Nazwa</div>
+      <input type="text" id="exName" placeholder="np. Rozpiętki">
+    </div>
+    <div class="field">
+      <div class="label" style="margin-bottom:4px;">Typ pomiaru</div>
+      <select id="exTyp">
+        <option value="liczba">Liczba (powtórzenia)</option>
+        <option value="czas">Czas (sekundy)</option>
+        <option value="cardio">Cardio (czas + dystans + poziom)</option>
+      </select>
+    </div>
+    <div id="exCelSimpleWrap" class="field">
+      <div class="label" style="margin-bottom:4px;">Cel (opcjonalnie)</div>
+      <input type="number" step="1" id="exCelSimple">
+    </div>
+    <div id="exCelCardioWrap" style="display:none;">
+      <div class="field">
+        <div class="label" style="margin-bottom:4px;">Cel — czas [min] (opcjonalnie)</div>
+        <input type="number" step="1" id="exCelCzas">
+      </div>
+      <div class="field">
+        <div class="label" style="margin-bottom:4px;">Cel — dystans [km] (opcjonalnie)</div>
+        <input type="number" step="0.1" id="exCelDystans">
+      </div>
+      <div class="field">
+        <div class="label" style="margin-bottom:4px;">Cel — poziom (opcjonalnie)</div>
+        <input type="number" step="1" id="exCelPoziom">
+      </div>
+    </div>
+    <button class="btn primary" id="btnSaveExercise">Zapisz ćwiczenie</button>
+    <button class="btn danger" id="btnDeleteExercise" style="display:none;">Usuń ćwiczenie</button>
+    <button class="btn ghost" id="btnCloseExerciseModal">Anuluj</button>
   </div>
 </div>
 
@@ -266,8 +430,17 @@ const DEFAULT_SETTINGS = {
 
 const DEFAULT_REMINDERS = {
   rano: {enabled:true, time:'05:10'},
-  wieczor: {enabled:true, time:'20:30'}
+  wieczor: {enabled:true, time:'20:30'},
+  trening: {enabled:true, time:'20:00'}
 };
+
+const DEFAULT_EXERCISES = [
+  {id:'ex_deska', nazwa:'Deska', typ:'czas', cel:null},
+  {id:'ex_pompki', nazwa:'Pompki', typ:'liczba', cel:null},
+  {id:'ex_przysiady', nazwa:'Przysiady', typ:'liczba', cel:null},
+  {id:'ex_brzuszki', nazwa:'Brzuszki', typ:'liczba', cel:null},
+  {id:'ex_orbitrek', nazwa:'Orbitrek', typ:'cardio', cel:{czas:null, dystans:null, poziom:null}}
+];
 
 // ---------- STAN ----------
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -275,13 +448,20 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 let state = loadState();
 let editingId = null;
 let currentPeriod = 'T';
+let currentExerciseId = null;
+let currentMetric = 'dystans';
+let currentPeriodT = 'T';
+let currentAddExerciseId = null;
+let editingWorkoutId = null;
+let currentSeries = [null];
 
 function loadState(){
   try{
     const raw = localStorage.getItem('wagapf_state');
     if(raw) return JSON.parse(raw);
   }catch(e){}
-  return { measurements: SEED_MEASUREMENTS, settings: DEFAULT_SETTINGS, reminders: DEFAULT_REMINDERS };
+  return { measurements: SEED_MEASUREMENTS, settings: DEFAULT_SETTINGS, reminders: DEFAULT_REMINDERS,
+    exercises: DEFAULT_EXERCISES, workouts: [] };
 }
 function persistLocal(){
   localStorage.setItem('wagapf_state', JSON.stringify(state));
@@ -303,7 +483,12 @@ function pushState(){
   fetch(GAS_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'state', value: JSON.stringify({measurements:state.measurements, settings:state.settings})})
+    body: JSON.stringify({key:'state', value: JSON.stringify({
+      measurements: state.measurements,
+      settings: state.settings,
+      exercises: state.exercises,
+      workouts: state.workouts
+    })})
   }).then(()=>setSync('ok')).catch(()=>setSync('err'));
 }
 
@@ -326,6 +511,8 @@ async function pullState(){
       if(parsed && parsed.measurements){
         state.measurements = parsed.measurements;
         state.settings = parsed.settings || state.settings;
+        state.exercises = parsed.exercises || state.exercises;
+        state.workouts = parsed.workouts || state.workouts;
         persistLocal();
         render();
       }
@@ -442,17 +629,15 @@ function shortLabel(key, period){
   const p = key.split('-'); return months[parseInt(p[1],10)-1];
 }
 
-function renderChart(){
-  const svg = document.getElementById('chartSvg');
-  const series = buildSeries(currentPeriod);
-  const cel = state.settings.cel;
+function renderLineChart(svg, series, cel, period){
   if(series.length === 0){
     svg.innerHTML = '<text x="150" y="65" font-size="11" fill="var(--ink-dim)" text-anchor="middle">Brak danych</text>';
     return;
   }
   const values = series.map(s=>s.value);
-  const maxV = Math.max(...values, cel) + 0.5;
-  const minV = Math.min(...values, cel) - 0.5;
+  const hasCel = cel !== null && cel !== undefined;
+  const maxV = Math.max(...values, hasCel?cel:-Infinity) + 0.5;
+  const minV = Math.min(...values, hasCel?cel:Infinity) - 0.5;
   const padL = 22, padR = 6, padT = 10, padB = 18;
   const w = 300 - padL - padR, h = 130 - padT - padB;
   const x = i => padL + (series.length===1 ? w/2 : (i/(series.length-1))*w);
@@ -462,9 +647,11 @@ function renderChart(){
   svgContent += `<text x="2" y="${padT+5}" font-size="9" fill="#8fa0ab">${maxV.toFixed(0)}</text>`;
   svgContent += `<text x="2" y="${padT+h+2}" font-size="9" fill="#8fa0ab">${minV.toFixed(0)}</text>`;
 
-  const celY = y(cel);
-  svgContent += `<line x1="${padL}" y1="${celY}" x2="${300-padR}" y2="${celY}" stroke="#4caf7d" stroke-width="1" stroke-dasharray="4,3"/>`;
-  svgContent += `<text x="${300-padR}" y="${celY-4}" font-size="9" fill="#4caf7d" text-anchor="end">cel ${cel}</text>`;
+  if(hasCel){
+    const celY = y(cel);
+    svgContent += `<line x1="${padL}" y1="${celY}" x2="${300-padR}" y2="${celY}" stroke="#4caf7d" stroke-width="1" stroke-dasharray="4,3"/>`;
+    svgContent += `<text x="${300-padR}" y="${celY-4}" font-size="9" fill="#4caf7d" text-anchor="end">cel ${cel}</text>`;
+  }
 
   const points = series.map((s,i) => `${x(i)},${y(s.value)}`).join(' ');
   svgContent += `<polyline points="${points}" fill="none" stroke="#5b9bd5" stroke-width="2"/>`;
@@ -478,10 +665,16 @@ function renderChart(){
   });
 
   [0, Math.floor(series.length/2), series.length-1].forEach(i => {
-    svgContent += `<text x="${x(i)}" y="${130-4}" font-size="8" fill="#8fa0ab" text-anchor="middle">${shortLabel(series[i].label, currentPeriod)}</text>`;
+    svgContent += `<text x="${x(i)}" y="${130-4}" font-size="8" fill="#8fa0ab" text-anchor="middle">${shortLabel(series[i].label, period)}</text>`;
   });
 
   svg.innerHTML = svgContent;
+}
+
+function renderChart(){
+  const svg = document.getElementById('chartSvg');
+  const series = buildSeries(currentPeriod);
+  renderLineChart(svg, series, state.settings.cel, currentPeriod);
 }
 
 document.getElementById('periodToggle').addEventListener('click', e => {
@@ -600,10 +793,483 @@ function goToTab(i){
 }
 tabsEl.addEventListener('scroll', () => {
   const i = Math.round(tabsEl.scrollLeft / tabsEl.clientWidth);
-  document.querySelectorAll('.dot').forEach(d => d.classList.toggle('active', parseInt(d.dataset.i,10)===i));
+  document.querySelectorAll('#dotsWaga .dot').forEach(d => d.classList.toggle('active', parseInt(d.dataset.i,10)===i));
   if(i === 2) resetAddForm();
 });
-document.querySelectorAll('.dot').forEach(d => d.addEventListener('click', () => goToTab(parseInt(d.dataset.i,10))));
+document.querySelectorAll('#dotsWaga .dot').forEach(d => d.addEventListener('click', () => goToTab(parseInt(d.dataset.i,10))));
+
+// ---------- PRZEŁĄCZNIK TRYBU ----------
+function setMode(mode){
+  document.getElementById('modeWaga').classList.toggle('hidden-mode', mode !== 'waga');
+  document.getElementById('modeTrening').classList.toggle('hidden-mode', mode !== 'trening');
+  document.getElementById('btnModeWaga').classList.toggle('active', mode === 'waga');
+  document.getElementById('btnModeTrening').classList.toggle('active', mode === 'trening');
+}
+document.getElementById('btnModeWaga').addEventListener('click', () => setMode('waga'));
+document.getElementById('btnModeTrening').addEventListener('click', () => setMode('trening'));
+
+// ---------- TRENING: DANE ----------
+function getExercise(id){ return state.exercises.find(e => e.id === id); }
+
+function exerciseWorkouts(id){
+  return state.workouts.filter(w => w.exerciseId === id)
+    .sort((a,b) => (a.data+a.godzina).localeCompare(b.data+b.godzina));
+}
+
+function entryMetricValue(entry, exercise, metricKey){
+  if(exercise.typ === 'cardio') return entry[metricKey];
+  const serie = entry.serie || [];
+  if(!serie.length) return 0;
+  const suma = serie.reduce((a,b)=>a+b,0);
+  const najlepsza = Math.max(...serie);
+  return exercise.typ === 'liczba' ? suma : najlepsza;
+}
+
+function exerciseCel(exercise, metricKey){
+  if(exercise.typ === 'cardio') return exercise.cel ? exercise.cel[metricKey] : null;
+  return exercise.cel;
+}
+
+function unitLabel(typ, metricKey){
+  if(typ === 'czas') return 's';
+  if(typ === 'cardio'){
+    if(metricKey === 'czas') return 'min';
+    if(metricKey === 'dystans') return 'km';
+  }
+  return '';
+}
+
+function metricLabel(metricKey){
+  return metricKey === 'czas' ? 'Czas' : metricKey === 'dystans' ? 'Dystans' : metricKey === 'poziom' ? 'Poziom' : '';
+}
+
+function formatEntryValue(entry, exercise){
+  if(exercise.typ === 'cardio'){
+    const parts = [];
+    if(entry.czas !== null && entry.czas !== undefined) parts.push(entry.czas+' min');
+    if(entry.dystans !== null && entry.dystans !== undefined) parts.push(entry.dystans+' km');
+    if(entry.poziom !== null && entry.poziom !== undefined) parts.push('poz. '+entry.poziom);
+    return parts.join(' · ');
+  }
+  const serie = entry.serie || [];
+  return serie.join('+') + (exercise.typ==='czas' ? 's' : '');
+}
+
+function buildTrainingSeries(exerciseId, metricKey, period){
+  const exercise = getExercise(exerciseId);
+  const entries = exerciseWorkouts(exerciseId);
+  const groups = {};
+  const order = [];
+  entries.forEach(e => {
+    let key;
+    if(period === 'D') key = e.data;
+    else if(period === 'T') key = isoWeekKey(e.data);
+    else key = monthKey(e.data);
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(entryMetricValue(e, exercise, metricKey));
+  });
+  let keys = order;
+  const maxPoints = period === 'D' ? 14 : period === 'T' ? 13 : 12;
+  if(keys.length > maxPoints) keys = keys.slice(keys.length-maxPoints);
+  return keys.map(k => {
+    const vals = groups[k];
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    return {label:k, value: round2(avg)};
+  });
+}
+
+// ---------- TRENING: DASHBOARD ----------
+function renderExerciseChips(){
+  const wrap = document.getElementById('exerciseChips');
+  wrap.innerHTML = state.exercises.map(e =>
+    `<button class="chip ${e.id===currentExerciseId?'active':''}" data-id="${e.id}">${e.nazwa}</button>`
+  ).join('');
+}
+
+function renderMetricChips(){
+  const exercise = getExercise(currentExerciseId);
+  const wrap = document.getElementById('metricChipsWrap');
+  const chips = document.getElementById('metricChips');
+  if(!exercise || exercise.typ !== 'cardio'){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  const metrics = ['czas','dystans','poziom'];
+  if(!metrics.includes(currentMetric)) currentMetric = 'dystans';
+  chips.innerHTML = metrics.map(m =>
+    `<button class="chip ${m===currentMetric?'active':''}" data-m="${m}">${metricLabel(m)}</button>`
+  ).join('');
+}
+
+function renderTrainingDashboard(){
+  if(!state.exercises.length){
+    document.getElementById('exerciseChips').innerHTML = '';
+    document.getElementById('tLast').textContent = '-';
+    document.getElementById('tPB').textContent = '-';
+    document.getElementById('tCel').textContent = '-';
+    document.getElementById('tProgressWrap').style.display = 'none';
+    document.getElementById('chartSvgT').innerHTML = '<text x="150" y="65" font-size="11" fill="var(--ink-dim)" text-anchor="middle">Dodaj ćwiczenie w Ustawieniach</text>';
+    return;
+  }
+  if(!currentExerciseId || !getExercise(currentExerciseId)) currentExerciseId = state.exercises[0].id;
+  renderExerciseChips();
+  renderMetricChips();
+  const exercise = getExercise(currentExerciseId);
+  const metricKey = exercise.typ === 'cardio' ? currentMetric : 'metric';
+  const entries = exerciseWorkouts(exercise.id);
+  const last = entries.length ? entryMetricValue(entries[entries.length-1], exercise, metricKey) : null;
+  const pb = entries.length ? Math.max(...entries.map(e => entryMetricValue(e, exercise, metricKey))) : null;
+  const cel = exerciseCel(exercise, metricKey);
+  const unit = unitLabel(exercise.typ, metricKey);
+
+  document.getElementById('tLast').textContent = last === null ? '-' : (last + (unit?(' '+unit):''));
+  document.getElementById('tPB').textContent = pb === null ? '-' : (pb + (unit?(' '+unit):''));
+  document.getElementById('tCel').textContent = (cel === null || cel === undefined) ? '-' : (cel + (unit?(' '+unit):''));
+
+  const progressWrap = document.getElementById('tProgressWrap');
+  if(cel !== null && cel !== undefined && cel > 0){
+    progressWrap.style.display = 'block';
+    const pct = last === null ? 0 : Math.max(0, Math.min(100, (last/cel)*100));
+    document.getElementById('tBarGreen').style.width = pct + '%';
+    document.getElementById('tBarRed').style.width = (100-pct) + '%';
+    document.getElementById('tPctDone').textContent = Math.round(pct) + '% wykonane';
+    document.getElementById('tPctLeft').textContent = Math.round(100-pct) + '% zostało';
+  } else {
+    progressWrap.style.display = 'none';
+  }
+
+  renderTrainingChart();
+}
+
+function renderTrainingChart(){
+  const svg = document.getElementById('chartSvgT');
+  const exercise = getExercise(currentExerciseId);
+  if(!exercise){ svg.innerHTML = ''; return; }
+  const metricKey = exercise.typ === 'cardio' ? currentMetric : 'metric';
+  const series = buildTrainingSeries(exercise.id, metricKey, currentPeriodT);
+  const cel = exerciseCel(exercise, metricKey);
+  renderLineChart(svg, series, cel, currentPeriodT);
+}
+
+document.getElementById('exerciseChips').addEventListener('click', e => {
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  currentExerciseId = btn.dataset.id;
+  currentMetric = 'dystans';
+  renderTrainingDashboard();
+});
+document.getElementById('metricChips').addEventListener('click', e => {
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  currentMetric = btn.dataset.m;
+  renderTrainingDashboard();
+});
+document.getElementById('periodToggleT').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-p]');
+  if(!btn) return;
+  currentPeriodT = btn.dataset.p;
+  document.querySelectorAll('#periodToggleT button').forEach(b => b.classList.toggle('active', b===btn));
+  renderTrainingChart();
+});
+
+// ---------- TRENING: HISTORIA ----------
+function renderTrainingHistoryFilter(){
+  const sel = document.getElementById('historyFilterExercise');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Wszystkie ćwiczenia</option>' +
+    state.exercises.map(e => `<option value="${e.id}">${e.nazwa}</option>`).join('');
+  if(prev && state.exercises.some(e => e.id === prev)) sel.value = prev;
+}
+
+function renderTrainingHistory(){
+  renderTrainingHistoryFilter();
+  const filterId = document.getElementById('historyFilterExercise').value;
+  let entries = state.workouts.slice();
+  if(filterId) entries = entries.filter(w => w.exerciseId === filterId);
+  entries.sort((a,b) => (b.data+b.godzina).localeCompare(a.data+a.godzina));
+  const wrap = document.getElementById('historyTableWrapT');
+  if(entries.length === 0){ wrap.innerHTML = '<div class="empty">Brak wpisów</div>'; return; }
+  let html = '<table><tr><th>Data</th><th>Ćwiczenie</th><th>Wynik</th><th></th></tr>';
+  entries.forEach(w => {
+    const exercise = getExercise(w.exerciseId);
+    if(!exercise) return;
+    const dLabel = w.data.slice(8,10)+'.'+w.data.slice(5,7);
+    html += `<tr>
+      <td>${dLabel}</td>
+      <td>${exercise.nazwa}</td>
+      <td>${formatEntryValue(w, exercise)}</td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="icon-btn" onclick="startEditWorkout('${w.id}')">&#9998;</button>
+        <button class="icon-btn del" onclick="deleteWorkout('${w.id}')">&#128465;</button>
+      </td>
+    </tr>`;
+  });
+  html += '</table>';
+  wrap.innerHTML = html;
+}
+document.getElementById('historyFilterExercise').addEventListener('change', renderTrainingHistory);
+
+// ---------- TRENING: NOWY WPIS / EDYCJA ----------
+function renderAddExerciseChips(){
+  const wrap = document.getElementById('addExerciseChips');
+  wrap.innerHTML = state.exercises.map(e =>
+    `<button class="chip ${e.id===currentAddExerciseId?'active':''}" data-id="${e.id}">${e.nazwa}</button>`
+  ).join('');
+}
+document.getElementById('addExerciseChips').addEventListener('click', e => {
+  const btn = e.target.closest('.chip');
+  if(!btn) return;
+  currentAddExerciseId = btn.dataset.id;
+  currentSeries = [null];
+  renderAddExerciseChips();
+  renderSeriesForm();
+});
+
+function updateSeriesPreview(){
+  const el = document.getElementById('seriesPreview');
+  if(!el) return;
+  const vals = currentSeries.filter(v => v !== null && !isNaN(v));
+  if(!vals.length){ el.innerHTML = ''; return; }
+  const suma = vals.reduce((a,b)=>a+b,0);
+  const najlepsza = Math.max(...vals);
+  el.innerHTML = 'Suma: <b>' + round2(suma) + '</b> · Najlepsza seria: <b>' + round2(najlepsza) + '</b>';
+}
+
+window.removeSeries = function(i){
+  currentSeries.splice(i,1);
+  if(!currentSeries.length) currentSeries = [null];
+  renderSeriesForm();
+};
+
+function renderSeriesForm(){
+  const exercise = getExercise(currentAddExerciseId);
+  const wrap = document.getElementById('seriesFormWrap');
+  if(!exercise){ wrap.innerHTML = '<div class="empty">Dodaj ćwiczenie w Ustawieniach</div>'; return; }
+  if(exercise.typ === 'cardio'){
+    wrap.innerHTML = `
+      <div class="field">
+        <div class="label" style="margin-bottom:4px;">Czas jazdy [min]</div>
+        <input type="number" step="1" id="inpCardioCzas">
+      </div>
+      <div class="field">
+        <div class="label" style="margin-bottom:4px;">Dystans [km]</div>
+        <input type="number" step="0.1" id="inpCardioDystans">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <div class="label" style="margin-bottom:4px;">Poziom mocy/trudności</div>
+        <input type="number" step="1" id="inpCardioPoziom">
+      </div>
+    `;
+    return;
+  }
+  const unit = exercise.typ === 'czas' ? 'sekundy' : 'powtórzenia';
+  let html = '<div class="label" style="margin-bottom:8px;">Serie (' + unit + ')</div>';
+  currentSeries.forEach((v,i) => {
+    html += `<div class="serie-row">
+      <span class="serie-num">${i+1}.</span>
+      <input type="number" step="1" class="serie-input" data-i="${i}" value="${v===null?'':v}">
+      ${currentSeries.length > 1 ? `<button class="icon-btn del" onclick="removeSeries(${i})">&#10005;</button>` : ''}
+    </div>`;
+  });
+  html += '<button class="btn ghost" id="btnAddSeries" type="button" style="margin-top:4px;">+ Dodaj serię</button>';
+  html += '<div class="preview" id="seriesPreview"></div>';
+  wrap.innerHTML = html;
+  updateSeriesPreview();
+  document.getElementById('btnAddSeries').addEventListener('click', () => { currentSeries.push(null); renderSeriesForm(); });
+  wrap.querySelectorAll('.serie-input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      const i = parseInt(e.target.dataset.i, 10);
+      currentSeries[i] = e.target.value === '' ? null : parseFloat(e.target.value);
+      updateSeriesPreview();
+    });
+  });
+}
+
+function resetTrainingAddForm(){
+  editingWorkoutId = null;
+  if(!currentAddExerciseId || !getExercise(currentAddExerciseId)){
+    currentAddExerciseId = state.exercises.length ? state.exercises[0].id : null;
+  }
+  currentSeries = [null];
+  const now = new Date();
+  document.getElementById('inpTData').value = now.toISOString().slice(0,10);
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('inpTGodzina').value = hh+':'+mm;
+  renderAddExerciseChips();
+  renderSeriesForm();
+  document.getElementById('btnTSave').textContent = 'Zapisz wpis';
+  document.getElementById('btnTDelete').style.display = 'none';
+  document.getElementById('btnTCancelEdit').style.display = 'none';
+}
+
+window.startEditWorkout = function(id){
+  const w = state.workouts.find(x => x.id === id);
+  if(!w) return;
+  const exercise = getExercise(w.exerciseId);
+  if(!exercise) return;
+  editingWorkoutId = id;
+  currentAddExerciseId = w.exerciseId;
+  document.getElementById('inpTData').value = w.data;
+  document.getElementById('inpTGodzina').value = w.godzina;
+  renderAddExerciseChips();
+  if(exercise.typ === 'cardio'){
+    renderSeriesForm();
+    document.getElementById('inpCardioCzas').value = (w.czas ?? '');
+    document.getElementById('inpCardioDystans').value = (w.dystans ?? '');
+    document.getElementById('inpCardioPoziom').value = (w.poziom ?? '');
+  } else {
+    currentSeries = (w.serie && w.serie.length) ? [...w.serie] : [null];
+    renderSeriesForm();
+  }
+  document.getElementById('btnTSave').textContent = 'Zapisz zmiany';
+  document.getElementById('btnTDelete').style.display = 'block';
+  document.getElementById('btnTCancelEdit').style.display = 'block';
+  goToTabT(2);
+};
+
+window.deleteWorkout = function(id){
+  if(!confirm('Usunąć ten wpis?')) return;
+  state.workouts = state.workouts.filter(w => w.id !== id);
+  pushState();
+};
+
+document.getElementById('btnTSave').addEventListener('click', () => {
+  const exercise = getExercise(currentAddExerciseId);
+  if(!exercise){ alert('Najpierw dodaj ćwiczenie w Ustawieniach.'); return; }
+  const dataVal = document.getElementById('inpTData').value;
+  const godzinaVal = document.getElementById('inpTGodzina').value;
+  if(!dataVal || !godzinaVal){ alert('Uzupełnij datę i godzinę.'); return; }
+
+  const payload = { data: dataVal, godzina: godzinaVal, exerciseId: exercise.id };
+  if(exercise.typ === 'cardio'){
+    const czas = parseFloat(document.getElementById('inpCardioCzas').value);
+    const dystans = parseFloat(document.getElementById('inpCardioDystans').value);
+    const poziom = parseFloat(document.getElementById('inpCardioPoziom').value);
+    if(isNaN(czas) && isNaN(dystans) && isNaN(poziom)){ alert('Uzupełnij przynajmniej jedno pole.'); return; }
+    payload.czas = isNaN(czas) ? null : czas;
+    payload.dystans = isNaN(dystans) ? null : dystans;
+    payload.poziom = isNaN(poziom) ? null : poziom;
+  } else {
+    const serie = currentSeries.filter(v => v !== null && !isNaN(v) && v > 0);
+    if(!serie.length){ alert('Uzupełnij przynajmniej jedną serię.'); return; }
+    payload.serie = serie;
+  }
+
+  if(editingWorkoutId){
+    const idx = state.workouts.findIndex(w => w.id === editingWorkoutId);
+    if(idx > -1) state.workouts[idx] = {...state.workouts[idx], ...payload};
+  } else {
+    state.workouts.push({id: uid(), ...payload});
+  }
+  pushState();
+  resetTrainingAddForm();
+  goToTabT(1);
+});
+
+document.getElementById('btnTDelete').addEventListener('click', () => {
+  if(!editingWorkoutId) return;
+  if(!confirm('Usunąć ten wpis?')) return;
+  state.workouts = state.workouts.filter(w => w.id !== editingWorkoutId);
+  pushState();
+  resetTrainingAddForm();
+  goToTabT(1);
+});
+
+document.getElementById('btnTCancelEdit').addEventListener('click', () => { resetTrainingAddForm(); goToTabT(1); });
+
+// ---------- TRENING: ZAKŁADKI ----------
+const tabsElT = document.getElementById('tabsTrening');
+function goToTabT(i){
+  tabsElT.scrollTo({left: i * tabsElT.clientWidth, behavior:'smooth'});
+}
+tabsElT.addEventListener('scroll', () => {
+  const i = Math.round(tabsElT.scrollLeft / tabsElT.clientWidth);
+  document.querySelectorAll('#dotsTrening .dot').forEach(d => d.classList.toggle('active', parseInt(d.dataset.i,10)===i));
+  if(i === 2) resetTrainingAddForm();
+});
+document.querySelectorAll('#dotsTrening .dot').forEach(d => d.addEventListener('click', () => goToTabT(parseInt(d.dataset.i,10))));
+
+// ---------- TRENING: ZARZĄDZANIE ĆWICZENIAMI (Ustawienia) ----------
+let editingExerciseId = null;
+const exerciseModal = document.getElementById('exerciseModal');
+
+function renderExerciseManageList(){
+  const wrap = document.getElementById('exerciseManageList');
+  if(!state.exercises.length){ wrap.innerHTML = '<div class="empty">Brak ćwiczeń</div>'; return; }
+  wrap.innerHTML = state.exercises.map(e => {
+    const typLabel = e.typ === 'czas' ? 'czas' : e.typ === 'liczba' ? 'liczba' : 'cardio';
+    return `<div class="exercise-row">
+      <div><div class="name">${e.nazwa}</div><div class="meta">${typLabel}</div></div>
+      <button class="icon-btn" onclick="openExerciseModal('${e.id}')">&#9998;</button>
+    </div>`;
+  }).join('');
+}
+
+function toggleExerciseCelFields(){
+  const typ = document.getElementById('exTyp').value;
+  document.getElementById('exCelSimpleWrap').style.display = typ === 'cardio' ? 'none' : 'block';
+  document.getElementById('exCelCardioWrap').style.display = typ === 'cardio' ? 'block' : 'none';
+}
+document.getElementById('exTyp').addEventListener('change', toggleExerciseCelFields);
+
+window.openExerciseModal = function(id){
+  editingExerciseId = id || null;
+  const exercise = id ? getExercise(id) : null;
+  document.getElementById('exerciseModalTitle').textContent = exercise ? 'Edytuj ćwiczenie' : 'Nowe ćwiczenie';
+  document.getElementById('exName').value = exercise ? exercise.nazwa : '';
+  document.getElementById('exTyp').value = exercise ? exercise.typ : 'liczba';
+  toggleExerciseCelFields();
+  if(exercise && exercise.typ === 'cardio'){
+    document.getElementById('exCelCzas').value = (exercise.cel && exercise.cel.czas != null) ? exercise.cel.czas : '';
+    document.getElementById('exCelDystans').value = (exercise.cel && exercise.cel.dystans != null) ? exercise.cel.dystans : '';
+    document.getElementById('exCelPoziom').value = (exercise.cel && exercise.cel.poziom != null) ? exercise.cel.poziom : '';
+    document.getElementById('exCelSimple').value = '';
+  } else {
+    document.getElementById('exCelSimple').value = (exercise && exercise.cel != null) ? exercise.cel : '';
+  }
+  document.getElementById('btnDeleteExercise').style.display = exercise ? 'block' : 'none';
+  exerciseModal.classList.remove('hidden');
+};
+document.getElementById('btnAddExercise').addEventListener('click', () => openExerciseModal(null));
+document.getElementById('btnCloseExerciseModal').addEventListener('click', () => exerciseModal.classList.add('hidden'));
+
+document.getElementById('btnSaveExercise').addEventListener('click', () => {
+  const nazwa = document.getElementById('exName').value.trim();
+  const typ = document.getElementById('exTyp').value;
+  if(!nazwa){ alert('Podaj nazwę ćwiczenia.'); return; }
+  let cel;
+  if(typ === 'cardio'){
+    const czas = parseFloat(document.getElementById('exCelCzas').value);
+    const dystans = parseFloat(document.getElementById('exCelDystans').value);
+    const poziom = parseFloat(document.getElementById('exCelPoziom').value);
+    cel = { czas: isNaN(czas)?null:czas, dystans: isNaN(dystans)?null:dystans, poziom: isNaN(poziom)?null:poziom };
+  } else {
+    const c = parseFloat(document.getElementById('exCelSimple').value);
+    cel = isNaN(c) ? null : c;
+  }
+  if(editingExerciseId){
+    const idx = state.exercises.findIndex(e => e.id === editingExerciseId);
+    if(idx > -1) state.exercises[idx] = {...state.exercises[idx], nazwa, typ, cel};
+  } else {
+    state.exercises.push({id: uid(), nazwa, typ, cel});
+  }
+  pushState();
+  renderExerciseManageList();
+  resetTrainingAddForm();
+  exerciseModal.classList.add('hidden');
+});
+
+document.getElementById('btnDeleteExercise').addEventListener('click', () => {
+  if(!editingExerciseId) return;
+  const hasEntries = state.workouts.some(w => w.exerciseId === editingExerciseId);
+  const msg = hasEntries ? 'To ćwiczenie ma zapisane wpisy — usunięcie skasuje też całą jego historię. Kontynuować?' : 'Usunąć to ćwiczenie?';
+  if(!confirm(msg)) return;
+  state.exercises = state.exercises.filter(e => e.id !== editingExerciseId);
+  state.workouts = state.workouts.filter(w => w.exerciseId !== editingExerciseId);
+  pushState();
+  renderExerciseManageList();
+  resetTrainingAddForm();
+  exerciseModal.classList.add('hidden');
+});
 
 // ---------- USTAWIENIA ----------
 const settingsModal = document.getElementById('settingsModal');
@@ -614,6 +1280,9 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   document.getElementById('timeRano').value = state.reminders.rano.time;
   setSwitch('swWieczor', state.reminders.wieczor.enabled);
   document.getElementById('timeWieczor').value = state.reminders.wieczor.time;
+  setSwitch('swTrening', state.reminders.trening.enabled);
+  document.getElementById('timeTrening').value = state.reminders.trening.time;
+  renderExerciseManageList();
   settingsModal.classList.remove('hidden');
 });
 document.getElementById('btnCloseSettings').addEventListener('click', () => settingsModal.classList.add('hidden'));
@@ -628,13 +1297,15 @@ function toggleSwitch(id){
 }
 document.getElementById('swRano').addEventListener('click', () => toggleSwitch('swRano'));
 document.getElementById('swWieczor').addEventListener('click', () => toggleSwitch('swWieczor'));
+document.getElementById('swTrening').addEventListener('click', () => toggleSwitch('swTrening'));
 
 document.getElementById('btnSaveSettings').addEventListener('click', async () => {
   state.settings.cel = parseFloat(document.getElementById('setCel').value) || state.settings.cel;
   state.settings.wzrost = parseFloat(document.getElementById('setWzrost').value) || state.settings.wzrost;
   state.reminders = {
     rano: {enabled: document.getElementById('swRano').classList.contains('on'), time: document.getElementById('timeRano').value},
-    wieczor: {enabled: document.getElementById('swWieczor').classList.contains('on'), time: document.getElementById('timeWieczor').value}
+    wieczor: {enabled: document.getElementById('swWieczor').classList.contains('on'), time: document.getElementById('timeWieczor').value},
+    trening: {enabled: document.getElementById('swTrening').classList.contains('on'), time: document.getElementById('timeTrening').value}
   };
   persistLocal();
   render();
@@ -752,6 +1423,69 @@ function buildExportChartSVG(period, W, H){
   return s;
 }
 
+function buildFullTrainingSeries(exerciseId, metricKey, period){
+  const exercise = getExercise(exerciseId);
+  const entries = exerciseWorkouts(exerciseId);
+  const groups = {};
+  const order = [];
+  entries.forEach(e => {
+    let key;
+    if(period === 'D') key = e.data;
+    else if(period === 'T') key = isoWeekKey(e.data);
+    else key = monthKey(e.data);
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(entryMetricValue(e, exercise, metricKey));
+  });
+  return order.map(k => {
+    const vals = groups[k];
+    const avg = vals.reduce((a,b)=>a+b,0)/vals.length;
+    return {label:k, value: round2(avg)};
+  });
+}
+
+function buildTrainingExportChartSVG(exerciseId, metricKey, period, W, H){
+  const exercise = getExercise(exerciseId);
+  const series = buildFullTrainingSeries(exerciseId, metricKey, period);
+  const cel = exerciseCel(exercise, metricKey);
+  const title = exercise.nazwa + (exercise.typ==='cardio' ? ' — ' + metricLabel(metricKey) : '');
+  if(series.length === 0){
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="100%" height="100%" fill="#1b232a"/><text x="${W/2}" y="${H/2}" font-size="16" fill="#8fa0ab" text-anchor="middle">Brak danych</text></svg>`;
+  }
+  const values = series.map(s=>s.value);
+  const hasCel = cel !== null && cel !== undefined;
+  const maxV = Math.max(...values, hasCel?cel:-Infinity) + 1;
+  const minV = Math.min(0, Math.min(...values) - 1);
+  const padL = 50, padR = 24, padT = 36, padB = 50;
+  const w = W - padL - padR, h = H - padT - padB;
+  const x = i => padL + (series.length===1 ? w/2 : (i/(series.length-1))*w);
+  const y = v => padT + h - ((v-minV)/(maxV-minV))*h;
+
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Arial, sans-serif">`;
+  s += `<rect width="100%" height="100%" fill="#1b232a"/>`;
+  s += `<text x="${W/2}" y="20" font-size="15" fill="#e8edf1" text-anchor="middle">${title} (miesąc)</text>`;
+  s += `<text x="14" y="${padT+6}" font-size="12" fill="#8fa0ab">${maxV.toFixed(1)}</text>`;
+  s += `<text x="14" y="${padT+h+2}" font-size="12" fill="#8fa0ab">${minV.toFixed(1)}</text>`;
+  if(hasCel){
+    const celY = y(cel);
+    s += `<line x1="${padL}" y1="${celY}" x2="${W-padR}" y2="${celY}" stroke="#4caf7d" stroke-width="1.5" stroke-dasharray="6,4"/>`;
+    s += `<text x="${W-padR}" y="${celY-6}" font-size="12" fill="#4caf7d" text-anchor="end">cel ${cel}</text>`;
+  }
+  const points = series.map((p,i) => `${x(i)},${y(p.value)}`).join(' ');
+  s += `<polyline points="${points}" fill="none" stroke="#5b9bd5" stroke-width="2.5"/>`;
+  series.forEach((p,i) => {
+    const isLast = i === series.length-1;
+    s += `<circle cx="${x(i)}" cy="${y(p.value)}" r="${isLast?5:3.5}" fill="${isLast?'#e8a33d':'#5b9bd5'}"/>`;
+  });
+  const labelEvery = Math.max(1, Math.ceil(series.length/12));
+  series.forEach((p,i) => {
+    if(i % labelEvery === 0 || i === series.length-1){
+      s += `<text x="${x(i)}" y="${H-16}" font-size="11" fill="#8fa0ab" text-anchor="middle">${shortLabel(p.label, period)}</text>`;
+    }
+  });
+  s += `</svg>`;
+  return s;
+}
+
 function svgToPngBase64(svgString, W, H){
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -837,6 +1571,62 @@ async function exportToExcel(){
       rowCursor += Math.ceil((H*scale)/20) + 2;
     }
 
+    if(state.exercises.length){
+      const wsTHist = wb.addWorksheet('Trening - Historia');
+      wsTHist.columns = [
+        {header:'Data', key:'data', width:12},
+        {header:'Godzina', key:'godzina', width:10},
+        {header:'Ćwiczenie', key:'nazwa', width:16},
+        {header:'Wynik', key:'wynik', width:28}
+      ];
+      wsTHist.getRow(1).font = {bold:true};
+      state.workouts.slice().sort((a,b) => (a.data+a.godzina).localeCompare(b.data+b.godzina)).forEach(w => {
+        const exercise = getExercise(w.exerciseId);
+        if(!exercise) return;
+        wsTHist.addRow({ data: w.data, godzina: w.godzina, nazwa: exercise.nazwa, wynik: formatEntryValue(w, exercise) });
+      });
+
+      const wsTSet = wb.addWorksheet('Trening - Ćwiczenia');
+      wsTSet.columns = [
+        {header:'Nazwa', key:'nazwa', width:16},
+        {header:'Typ', key:'typ', width:10},
+        {header:'Cel', key:'cel', width:28}
+      ];
+      wsTSet.getRow(1).font = {bold:true};
+      state.exercises.forEach(e => {
+        let celStr = '-';
+        if(e.typ === 'cardio' && e.cel){
+          const parts = [];
+          if(e.cel.czas != null) parts.push('czas: '+e.cel.czas+' min');
+          if(e.cel.dystans != null) parts.push('dystans: '+e.cel.dystans+' km');
+          if(e.cel.poziom != null) parts.push('poziom: '+e.cel.poziom);
+          celStr = parts.length ? parts.join(', ') : '-';
+        } else if(e.cel != null){
+          celStr = String(e.cel);
+        }
+        wsTSet.addRow({ nazwa: e.nazwa, typ: e.typ, cel: celStr });
+      });
+
+      const wsTChart = wb.addWorksheet('Trening - Wykresy');
+      let rowCursorT = 0;
+      for(const exercise of state.exercises){
+        if(!exerciseWorkouts(exercise.id).length) continue;
+        const metricsToPlot = exercise.typ === 'cardio' ? ['czas','dystans','poziom'] : ['metric'];
+        for(const metricKey of metricsToPlot){
+          const label = exercise.nazwa + (exercise.typ==='cardio' ? ' — ' + metricLabel(metricKey) : '');
+          const labelRow1 = rowCursorT + 1;
+          wsTChart.getCell(labelRow1, 1).value = label;
+          wsTChart.getRow(labelRow1).font = {bold:true, size:13};
+          rowCursorT += 1;
+          const svgT = buildTrainingExportChartSVG(exercise.id, metricKey, 'M', W, H);
+          const base64T = await svgToPngBase64(svgT, W, H);
+          const imgIdT = wb.addImage({base64: base64T, extension:'png'});
+          wsTChart.addImage(imgIdT, { tl: {col:0, row: rowCursorT}, ext: {width: W*scale, height: H*scale} });
+          rowCursorT += Math.ceil((H*scale)/20) + 2;
+        }
+      }
+    }
+
     const buffer = await wb.xlsx.writeBuffer();
     const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const url = URL.createObjectURL(blob);
@@ -865,9 +1655,15 @@ document.getElementById('btnExportExcel').addEventListener('click', exportToExce
 function render(){
   renderDashboard();
   renderHistory();
+  renderTrainingDashboard();
+  renderTrainingHistory();
 }
 if(!state.reminders) state.reminders = DEFAULT_REMINDERS;
+if(!state.reminders.trening) state.reminders.trening = {enabled:true, time:'20:00'};
+if(!state.exercises) state.exercises = DEFAULT_EXERCISES;
+if(!state.workouts) state.workouts = [];
 resetAddForm();
+resetTrainingAddForm();
 render();
 pullState();
 </script>

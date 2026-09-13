@@ -67,13 +67,17 @@ function syncReminders(cfg) {
   const idsRaw = getStoredValue('calendar_ids');
   const ids = idsRaw ? JSON.parse(idsRaw) : {};
 
-  ids.rano = syncOneReminder(cal, ids.rano, cfg.rano, 'Waga – pomiar poranny (na czczo)');
-  ids.wieczor = syncOneReminder(cal, ids.wieczor, cfg.wieczor, 'Waga – pomiar wieczorny');
+  ids.rano = syncOneReminder(cal, ids.rano, cfg.rano, 'Waga – pomiar poranny (na czczo)',
+    'Zważ się i wpisz wynik w aplikacji Waga PF.');
+  ids.wieczor = syncOneReminder(cal, ids.wieczor, cfg.wieczor, 'Waga – pomiar wieczorny',
+    'Zważ się i wpisz wynik w aplikacji Waga PF.');
+  ids.trening = syncOneReminder(cal, ids.trening, cfg.trening, 'Trening – czas na sesję',
+    'Zrób trening i wpisz wynik w aplikacji Waga PF.');
 
   setStoredValue('calendar_ids', JSON.stringify(ids));
 }
 
-function syncOneReminder(cal, existingId, cfg, title) {
+function syncOneReminder(cal, existingId, cfg, title, description) {
   if (existingId) {
     try {
       const series = cal.getEventSeriesById(existingId);
@@ -93,7 +97,7 @@ function syncOneReminder(cal, existingId, cfg, title) {
 
   const recurrence = CalendarApp.newRecurrence().addDailyRule();
   const series = cal.createEventSeries(title, start, end, recurrence, {
-    description: 'Zważ się i wpisz wynik w aplikacji Waga PF.'
+    description: description
   });
   series.addPopupReminder(0);
   return series.getId();
