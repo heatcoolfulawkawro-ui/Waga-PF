@@ -1,45 +1,33 @@
-# Waga PF — pakiet do wdrożenia
+# Waga PF
 
 Aplikacja webowa do dziennika pomiarów masy ciała. Wzorzec architektury:
 jeden plik HTML (frontend) + Google Apps Script (backend, magazyn klucz-wartość
 w Arkuszu Google) + GitHub Pages (hosting). Ten sam wzorzec co poprzednie
 mini-aplikacje (np. karta godzin HVAC).
 
-## Pliki w tym pakiecie
+Wdrożona i działająca pod: **https://heatcoolfulawkawro-ui.github.io/Waga-PF/**
+
+## Pliki w repo
 - `index.html` — cały frontend (HTML+CSS+JS w jednym pliku, mobile-first, dark theme)
-- `Code.gs` — kod backendu Google Apps Script
+- `Kod.gs` — kod backendu Google Apps Script (nazwa pliku musi się zgadzać z
+  nazwą pliku po stronie script.google.com — tam projekt nazywa się `Kod`)
+- `appsscript.json` — manifest projektu Apps Script (pobrany przez `clasp pull`,
+  nie edytować ręcznie bez potrzeby — pole `webapp.access` kontroluje kto może
+  używać wdrożonej appki)
+- `.clasp.json`, `.claspignore`, `.github/workflows/deploy-gas.yml` — auto-deploy
+  backendu: `git push` na `main` z zmianą w `Kod.gs` sam aktualizuje działający
+  Web App przez GitHub Actions + `clasp` (bez ręcznego kopiowania do edytora
+  script.google.com). Wymaga sekretów repo `CLASP_CREDENTIALS` i
+  `GAS_DEPLOYMENT_ID`.
 
-## Co trzeba zrobić (w tej kolejności)
-
-### 1. Arkusz Google + Apps Script
-1. Załóż nowy Arkusz Google.
-2. Rozszerzenia → Apps Script.
-3. Wklej całą zawartość `Code.gs`, zapisz.
-4. Wdróż → Nowe wdrożenie → typ "Aplikacja internetowa".
-   - Wykonaj jako: **Ja**
-   - Kto ma dostęp: **Każdy**
-5. Autoryzacja: ekran "Google hasn't verified this app" jest normalny dla
-   własnych skryptów → Advanced → "Go to [projekt] (unsafe)" → Zezwól.
-   **Ważne:** trzeba zatwierdzić uprawnienia zarówno do Arkusza, jak i do
-   Kalendarza Google (skrypt zarządza przypomnieniami o pomiarach przez
-   `CalendarApp`).
-6. Skopiuj URL kończący się na `/exec`. Sprawdź go w oknie incognito —
-   pusta biała strona przy braku parametru `key` to sukces, nie błąd.
-
-### 2. Podłączenie frontendu do backendu
-W pliku `index.html` znajdź linię:
+## Podłączenie frontendu do backendu
+W pliku `index.html`:
 ```js
-const GAS_URL = 'PASTE_YOUR_GAS_URL_HERE';
+const GAS_URL = 'https://script.google.com/macros/s/.../exec';
 ```
-i podmień na realny URL z kroku 1.6.
+Już ustawione na deployment `@1` istniejącego projektu Apps Script.
 
-### 3. GitHub Pages
-1. Nowe repozytorium (Public).
-2. Add file → Upload files → wgraj `index.html` dokładnie pod tą nazwą → Commit.
-3. Settings → Pages → Source: branch `main`, folder `/ (root)` → Save.
-4. Poczekaj ~60 sekund. Link gotowy: `https://<user>.github.io/<repo>/`.
-
-### 4. Test end-to-end
+## Test end-to-end
 1. Otwórz link w przeglądarce.
 2. W Ustawieniach (ikona trybika) kliknij "Test połączenia z Arkuszem" —
    powinien zwrócić status 200.
