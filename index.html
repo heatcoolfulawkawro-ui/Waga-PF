@@ -224,7 +224,13 @@
 
   <!-- TAB 0: DASHBOARD TRENINGU -->
   <section class="tab" id="tabTDashboard">
-    <div class="chips" id="exerciseChips"></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="chips" id="exerciseChips" style="flex:1;margin-bottom:0;"></div>
+      <button class="icon-btn" id="btnQuickAddRecord" aria-label="Dodaj rekord" title="Dodaj rekord"
+        style="flex:0 0 auto;font-size:22px;color:var(--amber);border:1px solid var(--line);
+        border-radius:50%;width:34px;height:34px;line-height:1;padding:0;">&#43;</button>
+    </div>
+    <div style="height:10px;"></div>
 
     <div id="metricChipsWrap" style="display:none;">
       <div class="chips" id="metricChips"></div>
@@ -961,6 +967,12 @@ document.getElementById('metricChips').addEventListener('click', e => {
   if(!btn) return;
   currentMetric = btn.dataset.m;
   renderTrainingDashboard();
+});
+document.getElementById('btnQuickAddRecord').addEventListener('click', () => {
+  if(!currentExerciseId) return;
+  currentAddExerciseId = currentExerciseId;
+  resetTrainingAddForm();
+  goToTabT(2);
 });
 document.getElementById('periodToggleT').addEventListener('click', e => {
   const btn = e.target.closest('button[data-p]');
