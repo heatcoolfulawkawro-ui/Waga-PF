@@ -9,16 +9,17 @@
 // starą wersję strony. Ten kod po cichu sprawdza w tle prawdziwą
 // aktualną wersję na serwerze (z pominięciem cache przeglądarki) i
 // odświeża stronę automatycznie, jeśli wykryje nowszą.
-(function(){
+window.__wagapfVersionPromise = (function(){
   try{
-    fetch(location.pathname, { method:'HEAD', cache:'no-store' }).then(function(res){
+    return fetch(location.pathname, { method:'HEAD', cache:'no-store' }).then(function(res){
       var v = res.headers.get('last-modified') || res.headers.get('etag');
-      if(!v) return;
+      if(!v) return null;
       var stored = localStorage.getItem('wagapf_page_version');
       localStorage.setItem('wagapf_page_version', v);
-      if(stored && stored !== v) location.reload();
-    }).catch(function(){});
-  }catch(e){}
+      if(stored && stored !== v){ location.reload(); return null; }
+      return v;
+    }).catch(function(){ return null; });
+  }catch(e){ return Promise.resolve(null); }
 })();
 </script>
 <style>
@@ -132,7 +133,10 @@
 <body>
 
 <div class="topbar">
-  <span class="title">Waga PF</span>
+  <div>
+    <div class="title">Waga PF</div>
+    <div class="label" id="appVersion" style="font-size:9px;margin-top:1px;">—</div>
+  </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span class="sync" id="syncStatus">—</span>
     <button class="gear" id="btnSettings" aria-label="Ustawienia">&#9881;</button>
@@ -156,6 +160,12 @@
 
   <!-- TAB 0: DASHBOARD -->
   <section class="tab" id="tabDashboard">
+    <div class="card2" style="text-align:center;">
+      <div class="label">Aktualna waga</div>
+      <div style="font-size:34px;font-weight:700;margin-top:2px;" id="dCurrentWaga">-</div>
+      <div class="label" id="dCurrentWagaMeta">-</div>
+    </div>
+
     <div class="card">
       <div class="row3">
         <div><div class="label" id="dStartLabel">Start</div><div class="big" id="dStart">-</div></div>
@@ -182,7 +192,7 @@
 
     <div class="card2">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span class="label">Wykres wagi</span>
+        <span class="label">Wykres wagi (rano/wieczór)</span>
         <div class="period-toggle" id="periodToggle">
           <button data-p="D">D</button>
           <button data-p="T" class="active">T</button>
@@ -577,6 +587,11 @@ function renderDashboard(){
   const start = state.settings.startWaga;
   const last = list.length ? list[list.length-1] : null;
 
+  document.getElementById('dCurrentWaga').textContent = last ? last.waga.toFixed(2) + ' kg' : '-';
+  document.getElementById('dCurrentWagaMeta').textContent = last
+    ? (last.pora==='R'?'rano':'wieczór') + ' · ' + last.data.slice(8,10)+'.'+last.data.slice(5,7)+'.'+last.data.slice(0,4) + ' ' + last.godzina
+    : 'brak pomiarów';
+
   document.getElementById('dStartLabel').textContent = 'Start ' + state.settings.startData.slice(8,10)+'.'+state.settings.startData.slice(5,7);
   document.getElementById('dStart').textContent = start.toFixed(2);
   document.getElementById('dLast').textContent = last ? last.waga.toFixed(2) : '-';
@@ -641,6 +656,40 @@ function buildSeries(period){
   });
 }
 
+function buildOrderedKeys(period){
+  const list = sortedMeasurements();
+  const seen = new Set();
+  const order = [];
+  list.forEach(m => {
+    let key;
+    if(period === 'D') key = m.data;
+    else if(period === 'T') key = isoWeekKey(m.data);
+    else key = monthKey(m.data);
+    if(!seen.has(key)){ seen.add(key); order.push(key); }
+  });
+  const maxPoints = period === 'D' ? 14 : period === 'T' ? 13 : 12;
+  return order.length > maxPoints ? order.slice(order.length-maxPoints) : order;
+}
+
+function avgByPora(period, pora){
+  const list = sortedMeasurements().filter(m => m.pora === pora);
+  const groups = {};
+  list.forEach(m => {
+    let key;
+    if(period === 'D') key = m.data;
+    else if(period === 'T') key = isoWeekKey(m.data);
+    else key = monthKey(m.data);
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(m.waga);
+  });
+  const out = {};
+  Object.keys(groups).forEach(k => {
+    const vals = groups[k];
+    out[k] = round2(vals.reduce((a,b)=>a+b,0)/vals.length);
+  });
+  return out;
+}
+
 function shortLabel(key, period){
   if(period === 'D'){ const p = key.split('-'); return p[2]+'.'+p[1]; }
   if(period === 'T'){ return 'tydz ' + key.split('-W')[1]; }
@@ -690,10 +739,67 @@ function renderLineChart(svg, series, cel, period){
   svg.innerHTML = svgContent;
 }
 
+function renderDualLineChart(svg, keys, avgR, avgW, cel, period){
+  if(keys.length === 0){
+    svg.innerHTML = '<text x="150" y="65" font-size="11" fill="var(--ink-dim)" text-anchor="middle">Brak danych</text>';
+    return;
+  }
+  const allValues = keys.map(k => avgR[k]).concat(keys.map(k => avgW[k])).filter(v => v !== undefined);
+  const hasCel = cel !== null && cel !== undefined;
+  const maxV = Math.max(...allValues, hasCel?cel:-Infinity) + 0.5;
+  const minV = Math.min(...allValues, hasCel?cel:Infinity) - 0.5;
+  const padL = 22, padR = 6, padT = 16, padB = 18;
+  const w = 300 - padL - padR, h = 130 - padT - padB;
+  const x = i => padL + (keys.length===1 ? w/2 : (i/(keys.length-1))*w);
+  const y = v => padT + h - ((v-minV)/(maxV-minV))*h;
+
+  let svgContent = '';
+  svgContent += `<text x="2" y="${padT+5}" font-size="9" fill="#8fa0ab">${maxV.toFixed(0)}</text>`;
+  svgContent += `<text x="2" y="${padT+h+2}" font-size="9" fill="#8fa0ab">${minV.toFixed(0)}</text>`;
+
+  if(hasCel){
+    const celY = y(cel);
+    svgContent += `<line x1="${padL}" y1="${celY}" x2="${300-padR}" y2="${celY}" stroke="#4caf7d" stroke-width="1" stroke-dasharray="4,3"/>`;
+  }
+
+  function drawSeries(map, color){
+    let segment = [];
+    const segments = [];
+    keys.forEach((k,i) => {
+      if(map[k] !== undefined){
+        segment.push([i, map[k]]);
+      } else if(segment.length){
+        segments.push(segment); segment = [];
+      }
+    });
+    if(segment.length) segments.push(segment);
+    segments.forEach(seg => {
+      const points = seg.map(([i,v]) => `${x(i)},${y(v)}`).join(' ');
+      svgContent += `<polyline points="${points}" fill="none" stroke="${color}" stroke-width="2"/>`;
+      seg.forEach(([i,v]) => {
+        svgContent += `<circle cx="${x(i)}" cy="${y(v)}" r="2.5" fill="${color}"/>`;
+      });
+    });
+  }
+  drawSeries(avgR, '#5b9bd5');
+  drawSeries(avgW, '#e8a33d');
+
+  [0, Math.floor(keys.length/2), keys.length-1].forEach(i => {
+    svgContent += `<text x="${x(i)}" y="${130-4}" font-size="8" fill="#8fa0ab" text-anchor="middle">${shortLabel(keys[i], period)}</text>`;
+  });
+
+  svgContent += `<circle cx="${300-72}" cy="9" r="3" fill="#5b9bd5"/><text x="${300-65}" y="12" font-size="8" fill="#8fa0ab">rano</text>`;
+  svgContent += `<circle cx="${300-32}" cy="9" r="3" fill="#e8a33d"/><text x="${300-25}" y="12" font-size="8" fill="#8fa0ab">wiecz.</text>`;
+
+  svg.innerHTML = svgContent;
+}
+
 function renderChart(){
   const svg = document.getElementById('chartSvg');
-  const series = buildSeries(currentPeriod);
-  renderLineChart(svg, series, state.settings.cel, currentPeriod);
+  const keys = buildOrderedKeys(currentPeriod);
+  const avgR = avgByPora(currentPeriod, 'R');
+  const avgW = avgByPora(currentPeriod, 'W');
+  renderDualLineChart(svg, keys, avgR, avgW, state.settings.cel, currentPeriod);
 }
 
 document.getElementById('periodToggle').addEventListener('click', e => {
@@ -1691,6 +1797,23 @@ resetAddForm();
 resetTrainingAddForm();
 render();
 pullState();
+
+if(window.__wagapfVersionPromise){
+  window.__wagapfVersionPromise.then(function(v){
+    var el = document.getElementById('appVersion');
+    if(!el || !v) return;
+    var d = new Date(v);
+    if(!isNaN(d.getTime())){
+      var dd = String(d.getDate()).padStart(2,'0');
+      var mm = String(d.getMonth()+1).padStart(2,'0');
+      var hh = String(d.getHours()).padStart(2,'0');
+      var mi = String(d.getMinutes()).padStart(2,'0');
+      el.textContent = dd+'.'+mm+' '+hh+':'+mi;
+    } else {
+      el.textContent = v.slice(0,14);
+    }
+  });
+}
 </script>
 </body>
 </html>
