@@ -338,6 +338,10 @@ window.__wagapfVersionPromise = (function(){
     <h3 id="settingsTitle">Ustawienia</h3>
 
     <div class="field">
+      <div class="label" style="margin-bottom:4px;">Waga startowa [kg]</div>
+      <input type="number" step="0.1" id="setStartWaga" placeholder="np. 90.0">
+    </div>
+    <div class="field">
       <div class="label" style="margin-bottom:4px;">Waga docelowa [kg]</div>
       <input type="number" step="0.1" id="setCel">
     </div>
@@ -1576,6 +1580,7 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   const p = profileState();
   const meta = PROFILES_META[activeProfile()];
   document.getElementById('settingsTitle').textContent = 'Ustawienia — ' + meta.label;
+  document.getElementById('setStartWaga').value = (p.settings.startWaga !== null && p.settings.startWaga !== undefined) ? p.settings.startWaga : '';
   document.getElementById('setCel').value = p.settings.cel;
   document.getElementById('setWzrost').value = p.settings.wzrost;
   document.getElementById('remindersRWWrap').classList.toggle('hidden', activeProfile() !== 'ja');
@@ -1605,6 +1610,11 @@ document.getElementById('swTrening').addEventListener('click', () => toggleSwitc
 document.getElementById('btnSaveSettings').addEventListener('click', async () => {
   const p = profileState();
   const meta = PROFILES_META[activeProfile()];
+  const startWagaVal = parseFloat(document.getElementById('setStartWaga').value);
+  if(!isNaN(startWagaVal)){
+    p.settings.startWaga = round2(startWagaVal);
+    if(!p.settings.startData) p.settings.startData = new Date().toISOString().slice(0,10);
+  }
   p.settings.cel = parseFloat(document.getElementById('setCel').value) || p.settings.cel;
   p.settings.wzrost = parseFloat(document.getElementById('setWzrost').value) || p.settings.wzrost;
   if(activeProfile() === 'ja'){

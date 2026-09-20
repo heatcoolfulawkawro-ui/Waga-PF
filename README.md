@@ -55,6 +55,12 @@ Już ustawione na deployment `@1` istniejącego projektu Apps Script.
   w Apps Script funkcję `syncReminders()` — tworzy/aktualizuje/usuwa
   cykliczne wydarzenia w Kalendarzu Google (skrypt działa "jako właściciel",
   więc ma dostęp do jego kalendarza bez dodatkowego OAuth we frontendzie).
+- Ustawienia: "Waga startowa" i "Waga docelowa" edytowalne dla każdego
+  profilu; zapis od razu przelicza i odświeża BMI aktualne/docelowe,
+  deltę i pasek postępu na dashboardzie (ten sam `persistLocal()+render()`
+  co przy zmianie celu). Wpisanie wagi startowej dla profilu, który jeszcze
+  nie ma żadnego pomiaru (np. świeżo dodana osoba), samo ustawia też datę
+  startu na dziś — nie trzeba czekać na pierwszy realny wpis.
 
 ## Trzy profile wagi: Ja / Beata / Żona
 Segmentowy przełącznik pod paskiem tytułowym (widoczny tylko w trybie ⚖️ Waga)
