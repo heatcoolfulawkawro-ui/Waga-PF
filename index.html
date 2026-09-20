@@ -160,6 +160,7 @@ window.__wagapfVersionPromise = (function(){
   <button data-profile="ja" class="active">Ja</button>
   <button data-profile="beata">Beata</button>
   <button data-profile="zona">Żona</button>
+  <button data-profile="marek">Marek</button>
 </div>
 
 <div class="dots" id="dotsWaga">
@@ -495,10 +496,19 @@ const DEFAULT_SETTINGS_BEATA = { cel: 57.5, wzrost: 152, startWaga: 101.50, star
 // (patrz bootstrap w handlerze btnSave).
 const DEFAULT_SETTINGS_ZONA = { cel: 56, wzrost: 159, startWaga: null, startData: null };
 
+// ---------- DANE STARTOWE: PROFIL "MAREK" ----------
+// Cel: BMI 24 * wzrost^2(1.68m) = ~67.7 kg. Waga dzisiejsza (90 kg) to
+// pierwszy, prawdziwy pomiar — jest jednocześnie punktem startowym.
+const SEED_MEASUREMENTS_MAREK = [
+  {"data":"2026-09-20","pora":"R","waga":90.00,"godzina":"08:00"}
+].map(m => ({...m, id: uid()}));
+const DEFAULT_SETTINGS_MAREK = { cel: 67.7, wzrost: 168, startWaga: 90.00, startData: '2026-09-20' };
+
 const PROFILES_META = {
   ja: { label: 'Ja', hasReminders: true },
   beata: { label: 'Beata', hasReminders: false },
-  zona: { label: 'Żona', hasReminders: true }
+  zona: { label: 'Żona', hasReminders: true },
+  marek: { label: 'Marek', hasReminders: false }
 };
 
 const DEFAULT_EXERCISES = [
@@ -528,7 +538,8 @@ function defaultState(){
     profiles: {
       ja: { measurements: SEED_MEASUREMENTS_JA, settings: {...DEFAULT_SETTINGS_JA}, reminders: {...DEFAULT_REMINDERS_JA} },
       beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null },
-      zona: { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null }
+      zona: { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null },
+      marek: { measurements: SEED_MEASUREMENTS_MAREK, settings: {...DEFAULT_SETTINGS_MAREK}, reminders: null }
     },
     remindersTrening: {...DEFAULT_REMINDERS_TRENING},
     exercises: DEFAULT_EXERCISES,
@@ -551,6 +562,7 @@ function loadState(){
     if(!parsed.workouts) parsed.workouts = [];
     if(!parsed.profiles.ja.reminders) parsed.profiles.ja.reminders = {...DEFAULT_REMINDERS_JA};
     if(!parsed.profiles.zona) parsed.profiles.zona = { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null };
+    if(!parsed.profiles.marek) parsed.profiles.marek = { measurements: SEED_MEASUREMENTS_MAREK, settings: {...DEFAULT_SETTINGS_MAREK}, reminders: null };
     if(!parsed.activeProfile) parsed.activeProfile = 'ja';
     return parsed;
   }
@@ -571,7 +583,8 @@ function loadState(){
           }
         },
         beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null },
-        zona: { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null }
+        zona: { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null },
+        marek: { measurements: SEED_MEASUREMENTS_MAREK, settings: {...DEFAULT_SETTINGS_MAREK}, reminders: null }
       },
       remindersTrening: oldReminders.trening || {...DEFAULT_REMINDERS_TRENING},
       exercises: parsed.exercises || DEFAULT_EXERCISES,

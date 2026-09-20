@@ -62,10 +62,11 @@ Już ustawione na deployment `@1` istniejącego projektu Apps Script.
   nie ma żadnego pomiaru (np. świeżo dodana osoba), samo ustawia też datę
   startu na dziś — nie trzeba czekać na pierwszy realny wpis.
 
-## Trzy profile wagi: Ja / Beata / Żona
+## Cztery profile wagi: Ja / Beata / Żona / Marek
 Segmentowy przełącznik pod paskiem tytułowym (widoczny tylko w trybie ⚖️ Waga)
 przełącza CAŁY widok (Dashboard, Historia, Nowy pomiar) między niezależnymi
-zestawami danych, trzymanymi w `state.profiles.ja` / `.beata` / `.zona`:
+zestawami danych, trzymanymi w `state.profiles.ja` / `.beata` / `.zona` /
+`.marek`:
 - **Ja**: R/W wg godziny, dwuliniowy wykres rano/wieczór, własne przypomnienia
   w Kalendarzu Google.
 - **Beata** (teściowa): jeden pomiar dziennie, bez podziału R/W (pola
@@ -81,25 +82,37 @@ zestawami danych, trzymanymi w `state.profiles.ja` / `.beata` / `.zona`:
   bez żadnego pomiaru (cel 56 kg, wzrost 159 cm), a **pierwszy wpis, który
   sama doda, automatycznie staje się jej punktem startowym** (bootstrap w
   handlerze `btnSave` — patrz pułapka niżej o `startWaga: null`).
+- **Marek** (tata): jak Beata — jeden pomiar dziennie, bez R/W, bez
+  przypomnień (domyślny wariant, gdy użytkownik nie prosi wprost o "jak ja").
+  Start: 90.0 kg / 20.09.2026 (prawdziwy pierwszy pomiar, nie placeholder),
+  wzrost 168 cm, cel 67.7 kg (BMI 24 dla tego wzrostu).
 
 **Backend bez zmian.** `Kod.gs` to generyczny magazyn klucz-wartość, więc
 obsługuje nowe klucze automatycznie:
-- `state_ja` / `state_beata` / `state_zona` — pomiary i ustawienia per profil
+- `state_ja` / `state_beata` / `state_zona` / `state_marek` — pomiary i
+  ustawienia per profil
 - `training` — `exercises`/`workouts`, wspólne, niezależne od profilu wagi
 - `reminders` — `{rano, wieczor, trening}` w jednym obiekcie, zawsze tylko
-  z profilu "Ja" + wspólne przypomnienie treningowe — Żona i Beata nie mają
+  z profilu "Ja" + wspólne przypomnienie treningowe — pozostali nie mają
   własnych wpisów w tym obiekcie (świadomie, na życzenie użytkownika: jedno
   przypomnienie w kalendarzu wystarczy niezależnie od liczby profili wagi)
 
 Appka pobiera przy starcie wszystkie profile wagi (`pullWeightState('ja')`,
-`pullWeightState('beata')`, `pullWeightState('zona')`) plus dane treningowe
-(`pullTraining()`), więc przełączanie profilu w UI jest natychmiastowe (bez
-dodatkowego zapytania). Zapis (`pushState()`) zawsze wysyła aktywny profil
-wagi + trening razem.
+`pullWeightState('beata')`, `pullWeightState('zona')`, `pullWeightState('marek')`)
+plus dane treningowe (`pullTraining()`), więc przełączanie profilu w UI jest
+natychmiastowe (bez dodatkowego zapytania). Zapis (`pushState()`) zawsze
+wysyła aktywny profil wagi + trening razem.
+
+Dodanie kolejnej osoby = kopiuj wzorzec `SEED_MEASUREMENTS_<X>`/
+`DEFAULT_SETTINGS_<X>` + wpis w `PROFILES_META` + gałąź w `defaultState()`
+i w OBU miejscach `loadState()` (już-zmigrowany i stara-płaska-struktura) +
+przycisk w `#profileSwitch`. Pomiń seed pomiarów i ustaw `startWaga: null`,
+jeśli nie znasz jeszcze wagi startowej danej osoby (wzorzec "Żona") — appka
+sama obsłuży pusty profil i zbootstrapuje start przy pierwszym wpisie.
 
 Istniejący stan sprzed tej zmiany (płaska struktura `measurements`/`settings`/
-`reminders` bez `profiles`, albo już zmigrowany do `profiles.ja`+`.beata` ale
-jeszcze bez `.zona`) jest migrowany/dopełniany automatycznie przy starcie —
+`reminders` bez `profiles`, albo już zmigrowany ale bez części profili) jest
+migrowany/dopełniany automatycznie przy starcie —
 `loadState()` wykrywa obie stare struktury i dopełnia brakujące profile
 świeżym seedem; `exercises`/`workouts` zawsze przechodzą bez zmian.
 
