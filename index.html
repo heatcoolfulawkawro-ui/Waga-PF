@@ -109,6 +109,12 @@ window.__wagapfVersionPromise = (function(){
     color:var(--ink-dim);padding:9px;border-radius:9px;cursor:pointer;}
   .mode-switch button.active{background:var(--amber);color:var(--bg);}
   .hidden-mode{display:none;}
+  .hidden{display:none !important;}
+  .profile-switch{display:flex;background:var(--panel);border-radius:8px;padding:3px;
+    margin:0 0 10px;}
+  .profile-switch button{flex:1;border:none;background:transparent;color:var(--ink-dim);
+    padding:8px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;}
+  .profile-switch button.active{background:var(--amber);color:var(--bg);}
   .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;
     -webkit-overflow-scrolling:touch;}
   .chips::-webkit-scrollbar{display:none;}
@@ -149,6 +155,11 @@ window.__wagapfVersionPromise = (function(){
 </div>
 
 <div id="modeWaga">
+
+<div class="profile-switch" id="profileSwitch" style="margin:0 16px 8px;">
+  <button data-profile="ja" class="active">Ja</button>
+  <button data-profile="beata">Beata</button>
+</div>
 
 <div class="dots" id="dotsWaga">
   <span class="dot active" data-i="0"></span>
@@ -192,7 +203,7 @@ window.__wagapfVersionPromise = (function(){
 
     <div class="card2">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span class="label">Wykres wagi (rano/wieczór)</span>
+        <span class="label" id="chartLabel">Wykres wagi (rano/wieczór)</span>
         <div class="period-toggle" id="periodToggle">
           <button data-p="D">D</button>
           <button data-p="T" class="active">T</button>
@@ -220,16 +231,16 @@ window.__wagapfVersionPromise = (function(){
         <span class="label">Data</span>
         <input type="date" id="inpData" style="width:auto;">
       </div>
-      <div class="toggle-row">
+      <div class="toggle-row" id="rowGodzina">
         <span class="label">Godzina</span>
         <input type="time" id="inpGodzina" style="width:auto;">
       </div>
-      <div class="toggle-row" style="margin-bottom:0;">
+      <div class="toggle-row" id="rowPora" style="margin-bottom:0;">
         <span class="label">Pora (automatycznie)</span>
         <span id="inpPoraBadge" class="badge R">R - rano</span>
       </div>
     </div>
-    <div class="hint">do 15:00 &rarr; R (rano) &middot; po 15:00 &rarr; W (wieczór) &middot; zmień godzinę, aby przestawić ręcznie</div>
+    <div class="hint" id="poraHint">do 15:00 &rarr; R (rano) &middot; po 15:00 &rarr; W (wieczór) &middot; zmień godzinę, aby przestawić ręcznie</div>
     <button class="btn primary" id="btnSave">Zapisz pomiar</button>
     <button class="btn danger" id="btnDelete" style="display:none;">Usuń wpis</button>
     <button class="btn ghost" id="btnCancelEdit" style="display:none;">Anuluj edycję</button>
@@ -323,7 +334,7 @@ window.__wagapfVersionPromise = (function(){
 <!-- SETTINGS MODAL -->
 <div class="modal-bg hidden" id="settingsModal">
   <div class="modal">
-    <h3>Ustawienia</h3>
+    <h3 id="settingsTitle">Ustawienia</h3>
 
     <div class="field">
       <div class="label" style="margin-bottom:4px;">Waga docelowa [kg]</div>
@@ -337,17 +348,19 @@ window.__wagapfVersionPromise = (function(){
     <div class="divider" style="margin-bottom:10px;">
       <div class="label" style="margin-bottom:10px;">Przypomnienia w Kalendarzu Google</div>
 
-      <div class="toggle-row">
-        <span style="font-size:13px;">Rano (na czczo)</span>
-        <button class="switch" id="swRano"><span class="knob"></span></button>
-      </div>
-      <input type="time" id="timeRano" style="margin-bottom:14px;">
+      <div id="remindersRWWrap">
+        <div class="toggle-row">
+          <span style="font-size:13px;">Rano (na czczo)</span>
+          <button class="switch" id="swRano"><span class="knob"></span></button>
+        </div>
+        <input type="time" id="timeRano" style="margin-bottom:14px;">
 
-      <div class="toggle-row">
-        <span style="font-size:13px;">Wieczór</span>
-        <button class="switch" id="swWieczor"><span class="knob"></span></button>
+        <div class="toggle-row">
+          <span style="font-size:13px;">Wieczór</span>
+          <button class="switch" id="swWieczor"><span class="knob"></span></button>
+        </div>
+        <input type="time" id="timeWieczor" style="margin-bottom:14px;">
       </div>
-      <input type="time" id="timeWieczor" style="margin-bottom:14px;">
 
       <div class="toggle-row">
         <span style="font-size:13px;">Trening</span>
@@ -419,8 +432,8 @@ window.__wagapfVersionPromise = (function(){
 // ---------- KONFIGURACJA ----------
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbz3-nc9P2jTv3pX2_aiP6Ne7A67QXtZHObP53BU3GNMIjgrThQSJtfaOCnBbGSGSRQI/exec';
 
-// ---------- DANE STARTOWE ----------
-const SEED_MEASUREMENTS = [
+// ---------- DANE STARTOWE: PROFIL "JA" ----------
+const SEED_MEASUREMENTS_JA = [
   {"data":"2026-05-11","pora":"W","waga":96.50,"godzina":"20:27"},
   {"data":"2026-05-12","pora":"R","waga":95.45,"godzina":"05:26"},
   {"data":"2026-05-12","pora":"W","waga":94.95,"godzina":"20:42"},
@@ -450,17 +463,30 @@ const SEED_MEASUREMENTS = [
   {"data":"2026-09-09","pora":"W","waga":97.20,"godzina":"20:00"}
 ].map(m => ({...m, id: uid()}));
 
-const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS_JA = {
   cel: 86,
   wzrost: 186,
   startWaga: 96.50,
   startData: '2026-05-11'
 };
 
-const DEFAULT_REMINDERS = {
+const DEFAULT_REMINDERS_JA = {
   rano: {enabled:true, time:'05:10'},
-  wieczor: {enabled:true, time:'20:30'},
-  trening: {enabled:true, time:'20:00'}
+  wieczor: {enabled:true, time:'20:30'}
+};
+
+const DEFAULT_REMINDERS_TRENING = {enabled:true, time:'20:00'};
+
+// ---------- DANE STARTOWE: PROFIL "BEATA" ----------
+// Cel BMI 24.9 (górna granica normy) * wzrost^2(1.52m) = ~57.5 kg. Edytowalne w Ustawieniach.
+const SEED_MEASUREMENTS_BEATA = [
+  {"data":"2026-09-20","pora":"R","waga":101.50,"godzina":"12:54"}
+].map(m => ({...m, id: uid()}));
+const DEFAULT_SETTINGS_BEATA = { cel: 57.5, wzrost: 152, startWaga: 101.50, startData: '2026-09-20' };
+
+const PROFILES_META = {
+  ja: { label: 'Ja', hasReminders: true },
+  beata: { label: 'Beata', hasReminders: false }
 };
 
 const DEFAULT_EXERCISES = [
@@ -484,17 +510,67 @@ let currentAddExerciseId = null;
 let editingWorkoutId = null;
 let currentSeries = [null];
 
+function defaultState(){
+  return {
+    activeProfile: 'ja',
+    profiles: {
+      ja: { measurements: SEED_MEASUREMENTS_JA, settings: {...DEFAULT_SETTINGS_JA}, reminders: {...DEFAULT_REMINDERS_JA} },
+      beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null }
+    },
+    remindersTrening: {...DEFAULT_REMINDERS_TRENING},
+    exercises: DEFAULT_EXERCISES,
+    workouts: []
+  };
+}
+
 function loadState(){
-  try{
-    const raw = localStorage.getItem('wagapf_state');
-    if(raw) return JSON.parse(raw);
-  }catch(e){}
-  return { measurements: SEED_MEASUREMENTS, settings: DEFAULT_SETTINGS, reminders: DEFAULT_REMINDERS,
-    exercises: DEFAULT_EXERCISES, workouts: [] };
+  let raw;
+  try{ raw = localStorage.getItem('wagapf_state'); }catch(e){}
+  if(!raw) return defaultState();
+  let parsed;
+  try{ parsed = JSON.parse(raw); }catch(e){ return defaultState(); }
+  if(!parsed) return defaultState();
+
+  if(parsed.profiles && parsed.profiles.ja && parsed.profiles.beata){
+    // Już zmigrowany stan — dociągnij defensywnie ewentualne brakujące pola.
+    if(!parsed.remindersTrening) parsed.remindersTrening = {...DEFAULT_REMINDERS_TRENING};
+    if(!parsed.exercises) parsed.exercises = DEFAULT_EXERCISES;
+    if(!parsed.workouts) parsed.workouts = [];
+    if(!parsed.profiles.ja.reminders) parsed.profiles.ja.reminders = {...DEFAULT_REMINDERS_JA};
+    if(!parsed.activeProfile) parsed.activeProfile = 'ja';
+    return parsed;
+  }
+
+  if(parsed.measurements && parsed.settings){
+    // Stara, płaska struktura (sprzed profili Ja/Beata) — migrujemy do profilu "ja",
+    // "beata" startuje świeżo, exercises/workouts/trening zostają bez zmian.
+    const oldReminders = parsed.reminders || {};
+    return {
+      activeProfile: 'ja',
+      profiles: {
+        ja: {
+          measurements: parsed.measurements,
+          settings: parsed.settings,
+          reminders: {
+            rano: oldReminders.rano || {...DEFAULT_REMINDERS_JA.rano},
+            wieczor: oldReminders.wieczor || {...DEFAULT_REMINDERS_JA.wieczor}
+          }
+        },
+        beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null }
+      },
+      remindersTrening: oldReminders.trening || {...DEFAULT_REMINDERS_TRENING},
+      exercises: parsed.exercises || DEFAULT_EXERCISES,
+      workouts: parsed.workouts || []
+    };
+  }
+
+  return defaultState();
 }
 function persistLocal(){
   localStorage.setItem('wagapf_state', JSON.stringify(state));
 }
+function activeProfile(){ return state.activeProfile; }
+function profileState(){ return state.profiles[state.activeProfile]; }
 
 // ---------- SYNC Z ARKUSZEM ----------
 function isGasConfigured(){ return GAS_URL && GAS_URL.indexOf('PASTE_YOUR') === -1; }
@@ -509,16 +585,18 @@ function pushState(){
   persistLocal();
   render();
   if(!isGasConfigured()){ setSync('local'); return; }
-  fetch(GAS_URL, {
+  const p = profileState();
+  const reqWeight = fetch(GAS_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'state', value: JSON.stringify({
-      measurements: state.measurements,
-      settings: state.settings,
-      exercises: state.exercises,
-      workouts: state.workouts
-    })})
-  }).then(()=>setSync('ok')).catch(()=>setSync('err'));
+    body: JSON.stringify({key:'state_' + activeProfile(), value: JSON.stringify({measurements: p.measurements, settings: p.settings})})
+  });
+  const reqTraining = fetch(GAS_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({key:'training', value: JSON.stringify({exercises: state.exercises, workouts: state.workouts})})
+  });
+  Promise.all([reqWeight, reqTraining]).then(()=>setSync('ok')).catch(()=>setSync('err'));
 }
 
 function pushReminders(){
@@ -526,21 +604,41 @@ function pushReminders(){
   return fetch(GAS_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'reminders', value: JSON.stringify(state.reminders)})
+    body: JSON.stringify({key:'reminders', value: JSON.stringify({
+      rano: state.profiles.ja.reminders.rano,
+      wieczor: state.profiles.ja.reminders.wieczor,
+      trening: state.remindersTrening
+    })})
   });
 }
 
-async function pullState(){
+async function pullWeightState(profileKey){
   if(!isGasConfigured()) return;
   try{
-    const res = await fetch(GAS_URL + '?key=state');
+    const res = await fetch(GAS_URL + '?key=state_' + profileKey);
     const text = await res.text();
     if(text){
       const parsed = JSON.parse(text);
       if(parsed && parsed.measurements){
-        state.measurements = parsed.measurements;
-        state.settings = parsed.settings || state.settings;
-        state.exercises = parsed.exercises || state.exercises;
+        state.profiles[profileKey].measurements = parsed.measurements;
+        state.profiles[profileKey].settings = parsed.settings || state.profiles[profileKey].settings;
+        persistLocal();
+        if(profileKey === activeProfile()) render();
+      }
+    }
+    setSync('ok');
+  }catch(e){ setSync('err'); }
+}
+
+async function pullTraining(){
+  if(!isGasConfigured()) return;
+  try{
+    const res = await fetch(GAS_URL + '?key=training');
+    const text = await res.text();
+    if(text){
+      const parsed = JSON.parse(text);
+      if(parsed && parsed.exercises){
+        state.exercises = parsed.exercises;
         state.workouts = parsed.workouts || state.workouts;
         persistLocal();
         render();
@@ -552,7 +650,7 @@ async function pullState(){
 
 // ---------- LOGIKA / OBLICZENIA ----------
 function sortedMeasurements(){
-  return [...state.measurements].sort((a,b) => (a.data+a.godzina).localeCompare(b.data+b.godzina));
+  return [...profileState().measurements].sort((a,b) => (a.data+a.godzina).localeCompare(b.data+b.godzina));
 }
 
 function withDeltas(){
@@ -560,7 +658,7 @@ function withDeltas(){
   let prev = null;
   const out = list.map(m => {
     const deltaPrev = prev ? round2(m.waga - prev.waga) : null;
-    const deltaStart = round2(m.waga - state.settings.startWaga);
+    const deltaStart = round2(m.waga - profileState().settings.startWaga);
     prev = m;
     return {...m, deltaPrev, deltaStart};
   });
@@ -577,22 +675,24 @@ function classifyPora(godzina){
 }
 
 function bmiOf(waga){
-  const h = state.settings.wzrost/100;
+  const h = profileState().settings.wzrost/100;
   return waga/(h*h);
 }
 
 // ---------- RENDER: DASHBOARD ----------
 function renderDashboard(){
+  const settings = profileState().settings;
+  const hasReminders = PROFILES_META[activeProfile()].hasReminders;
   const list = sortedMeasurements();
-  const start = state.settings.startWaga;
+  const start = settings.startWaga;
   const last = list.length ? list[list.length-1] : null;
 
   document.getElementById('dCurrentWaga').textContent = last ? last.waga.toFixed(2) + ' kg' : '-';
   document.getElementById('dCurrentWagaMeta').textContent = last
-    ? (last.pora==='R'?'rano':'wieczór') + ' · ' + last.data.slice(8,10)+'.'+last.data.slice(5,7)+'.'+last.data.slice(0,4) + ' ' + last.godzina
+    ? (hasReminders ? ((last.pora==='R'?'rano':'wieczór') + ' · ') : '') + last.data.slice(8,10)+'.'+last.data.slice(5,7)+'.'+last.data.slice(0,4) + ' ' + last.godzina
     : 'brak pomiarów';
 
-  document.getElementById('dStartLabel').textContent = 'Start ' + state.settings.startData.slice(8,10)+'.'+state.settings.startData.slice(5,7);
+  document.getElementById('dStartLabel').textContent = 'Start ' + settings.startData.slice(8,10)+'.'+settings.startData.slice(5,7);
   document.getElementById('dStart').textContent = start.toFixed(2);
   document.getElementById('dLast').textContent = last ? last.waga.toFixed(2) : '-';
   const change = last ? round2(last.waga - start) : 0;
@@ -600,11 +700,11 @@ function renderDashboard(){
   changeEl.textContent = fmtSigned(change);
   changeEl.style.color = change <= 0 ? 'var(--green)' : 'var(--red)';
 
-  document.getElementById('dCel').textContent = 'Cel: ' + state.settings.cel.toFixed(1) + ' kg';
-  document.getElementById('dWzrost').textContent = 'Wzrost: ' + state.settings.wzrost + ' cm';
+  document.getElementById('dCel').textContent = 'Cel: ' + settings.cel.toFixed(1) + ' kg';
+  document.getElementById('dWzrost').textContent = 'Wzrost: ' + settings.wzrost + ' cm';
 
   const bmiNow = last ? bmiOf(last.waga) : bmiOf(start);
-  const bmiTarget = bmiOf(state.settings.cel);
+  const bmiTarget = bmiOf(settings.cel);
   document.getElementById('dBmiNow').textContent = bmiNow.toFixed(1);
   document.getElementById('dBmiTarget').textContent = bmiTarget.toFixed(1);
 
@@ -613,13 +713,13 @@ function renderDashboard(){
   const bmiPct = bmiRange !== 0 ? ((bmiStart - bmiNow)/bmiRange)*100 : 0;
   document.getElementById('dBmiPct').textContent = Math.round(bmiPct) + '%';
 
-  const wagaRange = start - state.settings.cel;
+  const wagaRange = start - settings.cel;
   const pct = wagaRange !== 0 ? ((start - (last?last.waga:start))/wagaRange)*100 : 0;
   const pctClamped = Math.max(0, Math.min(100, pct));
   document.getElementById('barGreen').style.width = pctClamped + '%';
   document.getElementById('barRed').style.width = (100-pctClamped) + '%';
   document.getElementById('dPctDone').textContent = Math.round(pct) + '% wykonane';
-  const remainingKg = last ? round2(last.waga - state.settings.cel) : round2(start - state.settings.cel);
+  const remainingKg = last ? round2(last.waga - settings.cel) : round2(start - settings.cel);
   document.getElementById('dPctLeft').textContent = Math.round(100-pct) + '% zostało \u00b7 ' + Math.max(0,remainingKg).toFixed(2) + ' kg';
 
   renderChart();
@@ -796,10 +896,16 @@ function renderDualLineChart(svg, keys, avgR, avgW, cel, period){
 
 function renderChart(){
   const svg = document.getElementById('chartSvg');
-  const keys = buildOrderedKeys(currentPeriod);
-  const avgR = avgByPora(currentPeriod, 'R');
-  const avgW = avgByPora(currentPeriod, 'W');
-  renderDualLineChart(svg, keys, avgR, avgW, state.settings.cel, currentPeriod);
+  const cel = profileState().settings.cel;
+  if(PROFILES_META[activeProfile()].hasReminders){
+    const keys = buildOrderedKeys(currentPeriod);
+    const avgR = avgByPora(currentPeriod, 'R');
+    const avgW = avgByPora(currentPeriod, 'W');
+    renderDualLineChart(svg, keys, avgR, avgW, cel, currentPeriod);
+  } else {
+    const series = buildSeries(currentPeriod);
+    renderLineChart(svg, series, cel, currentPeriod);
+  }
 }
 
 document.getElementById('periodToggle').addEventListener('click', e => {
@@ -813,16 +919,17 @@ document.getElementById('periodToggle').addEventListener('click', e => {
 // ---------- RENDER: HISTORIA ----------
 function renderHistory(){
   const rows = withDeltas().slice().reverse();
+  const showPora = PROFILES_META[activeProfile()].hasReminders;
   const wrap = document.getElementById('historyTableWrap');
   if(rows.length === 0){ wrap.innerHTML = '<div class="empty">Brak pomiarów</div>'; return; }
-  let html = '<table><tr><th>Data</th><th>Pora</th><th>Waga</th><th>&Delta; poprz.</th><th>&Delta; start</th><th></th></tr>';
+  let html = '<table><tr><th>Data</th>' + (showPora?'<th>Pora</th>':'') + '<th>Waga</th><th>&Delta; poprz.</th><th>&Delta; start</th><th></th></tr>';
   rows.forEach(r => {
     const dp = r.deltaPrev === null ? '&mdash;' : `<span class="${r.deltaPrev<=0?'neg':'pos'}">${fmtSigned(r.deltaPrev)}</span>`;
     const ds = `<span class="${r.deltaStart<=0?'neg':'pos'}">${fmtSigned(r.deltaStart)}</span>`;
     const dLabel = r.data.slice(8,10)+'.'+r.data.slice(5,7);
     html += `<tr>
       <td>${dLabel}</td>
-      <td>${r.pora}</td>
+      ${showPora ? `<td>${r.pora}</td>` : ''}
       <td>${r.waga.toFixed(2)}</td>
       <td>${dp}</td>
       <td>${ds}</td>
@@ -842,8 +949,18 @@ function lastMeasurement(){
   return list.length ? list[list.length-1] : null;
 }
 
+function applyProfileUI(){
+  const meta = PROFILES_META[activeProfile()];
+  document.getElementById('rowGodzina').classList.toggle('hidden', !meta.hasReminders);
+  document.getElementById('rowPora').classList.toggle('hidden', !meta.hasReminders);
+  document.getElementById('poraHint').classList.toggle('hidden', !meta.hasReminders);
+  document.getElementById('chartLabel').textContent = meta.hasReminders ? 'Wykres wagi (rano/wieczór)' : 'Wykres wagi';
+  document.querySelectorAll('#profileSwitch button').forEach(b => b.classList.toggle('active', b.dataset.profile === activeProfile()));
+}
+
 function resetAddForm(){
   editingId = null;
+  applyProfileUI();
   const last = lastMeasurement();
   const now = new Date();
   document.getElementById('inpWaga').value = last ? last.waga.toFixed(2) : '';
@@ -858,7 +975,7 @@ function resetAddForm(){
 }
 
 function startEdit(id){
-  const m = state.measurements.find(x => x.id === id);
+  const m = profileState().measurements.find(x => x.id === id);
   if(!m) return;
   editingId = id;
   document.getElementById('inpWaga').value = m.waga.toFixed(2);
@@ -889,13 +1006,14 @@ document.getElementById('btnSave').addEventListener('click', () => {
     return;
   }
   const pora = classifyPora(godzinaVal);
+  const p = profileState();
   if(editingId){
-    const idx = state.measurements.findIndex(x => x.id === editingId);
+    const idx = p.measurements.findIndex(x => x.id === editingId);
     if(idx > -1){
-      state.measurements[idx] = {...state.measurements[idx], waga:round2(wagaVal), data:dataVal, godzina:godzinaVal, pora};
+      p.measurements[idx] = {...p.measurements[idx], waga:round2(wagaVal), data:dataVal, godzina:godzinaVal, pora};
     }
   } else {
-    state.measurements.push({id:uid(), waga:round2(wagaVal), data:dataVal, godzina:godzinaVal, pora});
+    p.measurements.push({id:uid(), waga:round2(wagaVal), data:dataVal, godzina:godzinaVal, pora});
   }
   pushState();
   resetAddForm();
@@ -906,7 +1024,7 @@ document.getElementById('btnCancelEdit').addEventListener('click', () => { reset
 
 window.deleteEntry = function(id){
   if(!confirm('Usunąć ten pomiar?')) return;
-  state.measurements = state.measurements.filter(x => x.id !== id);
+  profileState().measurements = profileState().measurements.filter(x => x.id !== id);
   pushState();
 };
 window.startEdit = startEdit;
@@ -932,6 +1050,18 @@ function setMode(mode){
 }
 document.getElementById('btnModeWaga').addEventListener('click', () => setMode('waga'));
 document.getElementById('btnModeTrening').addEventListener('click', () => setMode('trening'));
+
+// ---------- PRZEŁĄCZNIK PROFILI (JA / BEATA) ----------
+document.getElementById('profileSwitch').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-profile]');
+  if(!btn) return;
+  state.activeProfile = btn.dataset.profile;
+  persistLocal();
+  applyProfileUI();
+  resetAddForm();
+  render();
+  pullWeightState(state.activeProfile);
+});
 
 // ---------- TRENING: DANE ----------
 function getExercise(id){ return state.exercises.find(e => e.id === id); }
@@ -1405,14 +1535,18 @@ document.getElementById('btnDeleteExercise').addEventListener('click', () => {
 // ---------- USTAWIENIA ----------
 const settingsModal = document.getElementById('settingsModal');
 document.getElementById('btnSettings').addEventListener('click', () => {
-  document.getElementById('setCel').value = state.settings.cel;
-  document.getElementById('setWzrost').value = state.settings.wzrost;
-  setSwitch('swRano', state.reminders.rano.enabled);
-  document.getElementById('timeRano').value = state.reminders.rano.time;
-  setSwitch('swWieczor', state.reminders.wieczor.enabled);
-  document.getElementById('timeWieczor').value = state.reminders.wieczor.time;
-  setSwitch('swTrening', state.reminders.trening.enabled);
-  document.getElementById('timeTrening').value = state.reminders.trening.time;
+  const p = profileState();
+  const meta = PROFILES_META[activeProfile()];
+  document.getElementById('settingsTitle').textContent = 'Ustawienia — ' + meta.label;
+  document.getElementById('setCel').value = p.settings.cel;
+  document.getElementById('setWzrost').value = p.settings.wzrost;
+  document.getElementById('remindersRWWrap').classList.toggle('hidden', !meta.hasReminders);
+  setSwitch('swRano', state.profiles.ja.reminders.rano.enabled);
+  document.getElementById('timeRano').value = state.profiles.ja.reminders.rano.time;
+  setSwitch('swWieczor', state.profiles.ja.reminders.wieczor.enabled);
+  document.getElementById('timeWieczor').value = state.profiles.ja.reminders.wieczor.time;
+  setSwitch('swTrening', state.remindersTrening.enabled);
+  document.getElementById('timeTrening').value = state.remindersTrening.time;
   renderExerciseManageList();
   settingsModal.classList.remove('hidden');
 });
@@ -1431,18 +1565,23 @@ document.getElementById('swWieczor').addEventListener('click', () => toggleSwitc
 document.getElementById('swTrening').addEventListener('click', () => toggleSwitch('swTrening'));
 
 document.getElementById('btnSaveSettings').addEventListener('click', async () => {
-  state.settings.cel = parseFloat(document.getElementById('setCel').value) || state.settings.cel;
-  state.settings.wzrost = parseFloat(document.getElementById('setWzrost').value) || state.settings.wzrost;
-  state.reminders = {
-    rano: {enabled: document.getElementById('swRano').classList.contains('on'), time: document.getElementById('timeRano').value},
-    wieczor: {enabled: document.getElementById('swWieczor').classList.contains('on'), time: document.getElementById('timeWieczor').value},
-    trening: {enabled: document.getElementById('swTrening').classList.contains('on'), time: document.getElementById('timeTrening').value}
-  };
+  const p = profileState();
+  const meta = PROFILES_META[activeProfile()];
+  p.settings.cel = parseFloat(document.getElementById('setCel').value) || p.settings.cel;
+  p.settings.wzrost = parseFloat(document.getElementById('setWzrost').value) || p.settings.wzrost;
+  if(meta.hasReminders){
+    state.profiles.ja.reminders = {
+      rano: {enabled: document.getElementById('swRano').classList.contains('on'), time: document.getElementById('timeRano').value},
+      wieczor: {enabled: document.getElementById('swWieczor').classList.contains('on'), time: document.getElementById('timeWieczor').value}
+    };
+  }
+  state.remindersTrening = {enabled: document.getElementById('swTrening').classList.contains('on'), time: document.getElementById('timeTrening').value};
   persistLocal();
   render();
   const btn = document.getElementById('btnSaveSettings');
   btn.textContent = 'Zapisywanie...';
   try{
+    pushState();
     await pushReminders();
     if(!isGasConfigured()){
       btn.textContent = 'Zapisano lokalnie (skonfiguruj GAS_URL)';
@@ -1517,7 +1656,7 @@ function buildFullSeriesForExport(period){
 
 function buildExportChartSVG(period, W, H){
   const series = buildFullSeriesForExport(period);
-  const cel = state.settings.cel;
+  const cel = profileState().settings.cel;
   const periodLabel = period==='D' ? 'dzień' : period==='T' ? 'tydzień' : 'miesiąc';
   if(series.length === 0){
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="100%" height="100%" fill="#1b232a"/><text x="${W/2}" y="${H/2}" font-size="16" fill="#8fa0ab" text-anchor="middle">Brak danych</text></svg>`;
@@ -1532,7 +1671,7 @@ function buildExportChartSVG(period, W, H){
 
   let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="Arial, sans-serif">`;
   s += `<rect width="100%" height="100%" fill="#1b232a"/>`;
-  s += `<text x="${W/2}" y="20" font-size="15" fill="#e8edf1" text-anchor="middle">Waga PF — wykres (${periodLabel})</text>`;
+  s += `<text x="${W/2}" y="20" font-size="15" fill="#e8edf1" text-anchor="middle">Waga PF — ${PROFILES_META[activeProfile()].label} — wykres (${periodLabel})</text>`;
   s += `<text x="14" y="${padT+6}" font-size="12" fill="#8fa0ab">${maxV.toFixed(1)}</text>`;
   s += `<text x="14" y="${padT+h+2}" font-size="12" fill="#8fa0ab">${minV.toFixed(1)}</text>`;
   const celY = y(cel);
@@ -1649,7 +1788,8 @@ async function exportToExcel(){
     wb.creator = 'Waga PF';
     wb.created = new Date();
 
-    const wsHist = wb.addWorksheet('Historia');
+    const profileLabel = PROFILES_META[activeProfile()].label;
+    const wsHist = wb.addWorksheet('Historia (' + profileLabel + ')');
     wsHist.columns = [
       {header:'Data', key:'data', width:12},
       {header:'Godzina', key:'godzina', width:10},
@@ -1669,20 +1809,26 @@ async function exportToExcel(){
     wsHist.getColumn('deltaPrev').numFmt = '+0.00;-0.00';
     wsHist.getColumn('deltaStart').numFmt = '+0.00;-0.00';
 
-    const wsSet = wb.addWorksheet('Ustawienia');
+    const wsSet = wb.addWorksheet('Ustawienia (' + profileLabel + ')');
     wsSet.columns = [{header:'Parametr', key:'k', width:28},{header:'Wartość', key:'v', width:24}];
     wsSet.getRow(1).font = {bold:true};
-    wsSet.addRows([
-      {k:'Waga startowa [kg]', v: state.settings.startWaga},
-      {k:'Data startu', v: state.settings.startData},
-      {k:'Waga docelowa [kg]', v: state.settings.cel},
-      {k:'Wzrost [cm]', v: state.settings.wzrost},
-      {k:'Przypomnienie rano', v: state.reminders.rano.enabled ? ('włączone, ' + state.reminders.rano.time) : 'wyłączone'},
-      {k:'Przypomnienie wieczór', v: state.reminders.wieczor.enabled ? ('włączone, ' + state.reminders.wieczor.time) : 'wyłączone'},
-      {k:'Data eksportu', v: new Date().toLocaleString('pl-PL')}
-    ]);
+    const settingsRows = [
+      {k:'Profil', v: profileLabel},
+      {k:'Waga startowa [kg]', v: profileState().settings.startWaga},
+      {k:'Data startu', v: profileState().settings.startData},
+      {k:'Waga docelowa [kg]', v: profileState().settings.cel},
+      {k:'Wzrost [cm]', v: profileState().settings.wzrost}
+    ];
+    if(PROFILES_META[activeProfile()].hasReminders){
+      settingsRows.push(
+        {k:'Przypomnienie rano', v: state.profiles.ja.reminders.rano.enabled ? ('włączone, ' + state.profiles.ja.reminders.rano.time) : 'wyłączone'},
+        {k:'Przypomnienie wieczór', v: state.profiles.ja.reminders.wieczor.enabled ? ('włączone, ' + state.profiles.ja.reminders.wieczor.time) : 'wyłączone'}
+      );
+    }
+    settingsRows.push({k:'Data eksportu', v: new Date().toLocaleString('pl-PL')});
+    wsSet.addRows(settingsRows);
 
-    const wsChart = wb.addWorksheet('Wykresy');
+    const wsChart = wb.addWorksheet('Wykresy (' + profileLabel + ')');
     const W = 900, H = 360;
     const scale = 0.6;
     let rowCursor = 0; // 0-based "next free row"
@@ -1789,14 +1935,13 @@ function render(){
   renderTrainingDashboard();
   renderTrainingHistory();
 }
-if(!state.reminders) state.reminders = DEFAULT_REMINDERS;
-if(!state.reminders.trening) state.reminders.trening = {enabled:true, time:'20:00'};
-if(!state.exercises) state.exercises = DEFAULT_EXERCISES;
-if(!state.workouts) state.workouts = [];
+applyProfileUI();
 resetAddForm();
 resetTrainingAddForm();
 render();
-pullState();
+pullWeightState('ja');
+pullWeightState('beata');
+pullTraining();
 
 if(window.__wagapfVersionPromise){
   window.__wagapfVersionPromise.then(function(v){

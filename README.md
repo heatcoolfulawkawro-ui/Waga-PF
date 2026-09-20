@@ -32,8 +32,8 @@ Już ustawione na deployment `@1` istniejącego projektu Apps Script.
 2. W Ustawieniach (ikona trybika) kliknij "Test połączenia z Arkuszem" —
    powinien zwrócić status 200.
 3. Aplikacja przy pierwszym uruchomieniu automatycznie zaimportuje 27
-   startowych pomiarów (zaszyte w kodzie) do localStorage i do Arkusza
-   (zakładka "Data", klucz `state`).
+   startowych pomiarów profilu "Ja" (zaszyte w kodzie) do localStorage i do
+   Arkusza (zakładka "Data", klucz `state_ja`).
 4. Sprawdź w Arkuszu, czy dane faktycznie się zapisały.
 5. Na telefonie: otwórz link w Safari → "Dodaj do ekranu początkowego".
 
@@ -56,10 +56,41 @@ Już ustawione na deployment `@1` istniejącego projektu Apps Script.
   cykliczne wydarzenia w Kalendarzu Google (skrypt działa "jako właściciel",
   więc ma dostęp do jego kalendarza bez dodatkowego OAuth we frontendzie).
 
+## Dwa profile wagi: Ja / Beata
+Segmentowy przełącznik pod paskiem tytułowym (widoczny tylko w trybie ⚖️ Waga)
+przełącza CAŁY widok (Dashboard, Historia, Nowy pomiar) między dwoma
+niezależnymi zestawami danych, trzymanymi w `state.profiles.ja` /
+`state.profiles.beata`:
+- **Ja**: bez zmian względem wcześniejszej wersji — R/W wg godziny, dwuliniowy
+  wykres rano/wieczór, przypomnienia w kalendarzu.
+- **Beata** (teściowa): jeden pomiar dziennie, bez podziału R/W (pola
+  Godzina/Pora ukryte w formularzu i tabeli historii, wykres jednoliniowy),
+  bez przypomnień w kalendarzu. Start: 101.50 kg / 20.09.2026, wzrost 152 cm,
+  cel 57.5 kg (górna granica prawidłowego BMI 24.9 dla tego wzrostu —
+  edytowalne w Ustawieniach).
+
+**Backend bez zmian.** `Kod.gs` to generyczny magazyn klucz-wartość, więc
+obsługuje nowe klucze automatycznie:
+- `state_ja` / `state_beata` — pomiary i ustawienia per profil
+- `training` — `exercises`/`workouts`, wspólne, niezależne od profilu wagi
+- `reminders` — `{rano, wieczor, trening}` w jednym obiekcie (rano/wieczór
+  zawsze z profilu "Ja"; Beata nie ma przypomnień)
+
+Appka pobiera przy starcie oba profile wagi (`pullWeightState('ja')` i
+`pullWeightState('beata')`) plus dane treningowe (`pullTraining()`), więc
+przełączanie profilu w UI jest natychmiastowe (bez dodatkowego zapytania).
+Zapis (`pushState()`) zawsze wysyła aktywny profil wagi + trening razem.
+
+Istniejący stan sprzed tej zmiany (płaska struktura `measurements`/`settings`/
+`reminders` bez `profiles`) jest migrowany automatycznie przy pierwszym
+uruchomieniu nowej wersji — `loadState()` wykrywa starą strukturę i przenosi
+ją do `profiles.ja`, `Beata` startuje ze świeżym seedem, `exercises`/
+`workouts` zostają bez zmian.
+
 ## Zakładka Trening
 Przełącznik u góry ⚖️ Waga | 💪 Trening — osobny pager Dashboard/Historia/Nowy
-wpis dla ćwiczeń, dane w tym samym magazynie klucz-wartość (klucz `state`,
-pola `exercises`/`workouts`).
+wpis dla ćwiczeń, dane w Arkuszu pod kluczem `training` (nie zależą od
+wybranego profilu wagi).
 - **Typy ćwiczeń**: `czas` (sekundy, np. Deska — metryka dnia = najlepsza
   seria), `liczba` (powtórzenia, np. Pompki/Przysiady/Brzuszki — metryka dnia
   = suma serii), `cardio` (Orbitrek — czas [min] + dystans [km] + poziom,
