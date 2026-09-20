@@ -159,6 +159,7 @@ window.__wagapfVersionPromise = (function(){
 <div class="profile-switch" id="profileSwitch" style="margin:0 16px 8px;">
   <button data-profile="ja" class="active">Ja</button>
   <button data-profile="beata">Beata</button>
+  <button data-profile="zona">Żona</button>
 </div>
 
 <div class="dots" id="dotsWaga">
@@ -484,9 +485,16 @@ const SEED_MEASUREMENTS_BEATA = [
 ].map(m => ({...m, id: uid()}));
 const DEFAULT_SETTINGS_BEATA = { cel: 57.5, wzrost: 152, startWaga: 101.50, startData: '2026-09-20' };
 
+// ---------- DANE STARTOWE: PROFIL "ŻONA" ----------
+// Brak znanej wagi startowej — profil startuje bez pomiarów; pierwszy wpis,
+// który żona sama doda w appce, automatycznie staje się jej punktem startowym
+// (patrz bootstrap w handlerze btnSave).
+const DEFAULT_SETTINGS_ZONA = { cel: 56, wzrost: 159, startWaga: null, startData: null };
+
 const PROFILES_META = {
   ja: { label: 'Ja', hasReminders: true },
-  beata: { label: 'Beata', hasReminders: false }
+  beata: { label: 'Beata', hasReminders: false },
+  zona: { label: 'Żona', hasReminders: true }
 };
 
 const DEFAULT_EXERCISES = [
@@ -515,7 +523,8 @@ function defaultState(){
     activeProfile: 'ja',
     profiles: {
       ja: { measurements: SEED_MEASUREMENTS_JA, settings: {...DEFAULT_SETTINGS_JA}, reminders: {...DEFAULT_REMINDERS_JA} },
-      beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null }
+      beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null },
+      zona: { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null }
     },
     remindersTrening: {...DEFAULT_REMINDERS_TRENING},
     exercises: DEFAULT_EXERCISES,
@@ -537,6 +546,7 @@ function loadState(){
     if(!parsed.exercises) parsed.exercises = DEFAULT_EXERCISES;
     if(!parsed.workouts) parsed.workouts = [];
     if(!parsed.profiles.ja.reminders) parsed.profiles.ja.reminders = {...DEFAULT_REMINDERS_JA};
+    if(!parsed.profiles.zona) parsed.profiles.zona = { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null };
     if(!parsed.activeProfile) parsed.activeProfile = 'ja';
     return parsed;
   }
@@ -556,7 +566,8 @@ function loadState(){
             wieczor: oldReminders.wieczor || {...DEFAULT_REMINDERS_JA.wieczor}
           }
         },
-        beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null }
+        beata: { measurements: SEED_MEASUREMENTS_BEATA, settings: {...DEFAULT_SETTINGS_BEATA}, reminders: null },
+        zona: { measurements: [], settings: {...DEFAULT_SETTINGS_ZONA}, reminders: null }
       },
       remindersTrening: oldReminders.trening || {...DEFAULT_REMINDERS_TRENING},
       exercises: parsed.exercises || DEFAULT_EXERCISES,
@@ -684,13 +695,32 @@ function renderDashboard(){
   const settings = profileState().settings;
   const hasReminders = PROFILES_META[activeProfile()].hasReminders;
   const list = sortedMeasurements();
-  const start = settings.startWaga;
   const last = list.length ? list[list.length-1] : null;
 
   document.getElementById('dCurrentWaga').textContent = last ? last.waga.toFixed(2) + ' kg' : '-';
   document.getElementById('dCurrentWagaMeta').textContent = last
     ? (hasReminders ? ((last.pora==='R'?'rano':'wieczór') + ' · ') : '') + last.data.slice(8,10)+'.'+last.data.slice(5,7)+'.'+last.data.slice(0,4) + ' ' + last.godzina
     : 'brak pomiarów';
+
+  if(settings.startWaga === null || settings.startWaga === undefined){
+    // Świeży profil bez żadnego pomiaru — start ustawi się sam po pierwszym wpisie.
+    document.getElementById('dStartLabel').textContent = 'Start';
+    document.getElementById('dStart').textContent = '-';
+    document.getElementById('dChange').textContent = '-';
+    document.getElementById('dChange').style.color = '';
+    document.getElementById('dCel').textContent = 'Cel: ' + settings.cel.toFixed(1) + ' kg';
+    document.getElementById('dWzrost').textContent = 'Wzrost: ' + settings.wzrost + ' cm';
+    document.getElementById('dBmiNow').textContent = '-';
+    document.getElementById('dBmiTarget').textContent = bmiOf(settings.cel).toFixed(1);
+    document.getElementById('dBmiPct').textContent = '-';
+    document.getElementById('barGreen').style.width = '0%';
+    document.getElementById('barRed').style.width = '100%';
+    document.getElementById('dPctDone').textContent = '0% wykonane';
+    document.getElementById('dPctLeft').textContent = '100% zostało';
+    renderChart();
+    return;
+  }
+  const start = settings.startWaga;
 
   document.getElementById('dStartLabel').textContent = 'Start ' + settings.startData.slice(8,10)+'.'+settings.startData.slice(5,7);
   document.getElementById('dStart').textContent = start.toFixed(2);
@@ -1013,6 +1043,10 @@ document.getElementById('btnSave').addEventListener('click', () => {
       p.measurements[idx] = {...p.measurements[idx], waga:round2(wagaVal), data:dataVal, godzina:godzinaVal, pora};
     }
   } else {
+    if(p.settings.startWaga === null || p.settings.startWaga === undefined){
+      p.settings.startWaga = round2(wagaVal);
+      p.settings.startData = dataVal;
+    }
     p.measurements.push({id:uid(), waga:round2(wagaVal), data:dataVal, godzina:godzinaVal, pora});
   }
   pushState();
@@ -1034,10 +1068,12 @@ const tabsEl = document.getElementById('tabs');
 function goToTab(i){
   tabsEl.scrollTo({left: i * tabsEl.clientWidth, behavior:'smooth'});
 }
+let lastWagaTabIndex = 0;
 tabsEl.addEventListener('scroll', () => {
   const i = Math.round(tabsEl.scrollLeft / tabsEl.clientWidth);
   document.querySelectorAll('#dotsWaga .dot').forEach(d => d.classList.toggle('active', parseInt(d.dataset.i,10)===i));
-  if(i === 2) resetAddForm();
+  if(i === 2 && lastWagaTabIndex !== 2) resetAddForm();
+  lastWagaTabIndex = i;
 });
 document.querySelectorAll('#dotsWaga .dot').forEach(d => d.addEventListener('click', () => goToTab(parseInt(d.dataset.i,10))));
 
@@ -1442,10 +1478,12 @@ const tabsElT = document.getElementById('tabsTrening');
 function goToTabT(i){
   tabsElT.scrollTo({left: i * tabsElT.clientWidth, behavior:'smooth'});
 }
+let lastTreningTabIndex = 0;
 tabsElT.addEventListener('scroll', () => {
   const i = Math.round(tabsElT.scrollLeft / tabsElT.clientWidth);
   document.querySelectorAll('#dotsTrening .dot').forEach(d => d.classList.toggle('active', parseInt(d.dataset.i,10)===i));
-  if(i === 2) resetTrainingAddForm();
+  if(i === 2 && lastTreningTabIndex !== 2) resetTrainingAddForm();
+  lastTreningTabIndex = i;
 });
 document.querySelectorAll('#dotsTrening .dot').forEach(d => d.addEventListener('click', () => goToTabT(parseInt(d.dataset.i,10))));
 
@@ -1540,7 +1578,7 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   document.getElementById('settingsTitle').textContent = 'Ustawienia — ' + meta.label;
   document.getElementById('setCel').value = p.settings.cel;
   document.getElementById('setWzrost').value = p.settings.wzrost;
-  document.getElementById('remindersRWWrap').classList.toggle('hidden', !meta.hasReminders);
+  document.getElementById('remindersRWWrap').classList.toggle('hidden', activeProfile() !== 'ja');
   setSwitch('swRano', state.profiles.ja.reminders.rano.enabled);
   document.getElementById('timeRano').value = state.profiles.ja.reminders.rano.time;
   setSwitch('swWieczor', state.profiles.ja.reminders.wieczor.enabled);
@@ -1569,7 +1607,7 @@ document.getElementById('btnSaveSettings').addEventListener('click', async () =>
   const meta = PROFILES_META[activeProfile()];
   p.settings.cel = parseFloat(document.getElementById('setCel').value) || p.settings.cel;
   p.settings.wzrost = parseFloat(document.getElementById('setWzrost').value) || p.settings.wzrost;
-  if(meta.hasReminders){
+  if(activeProfile() === 'ja'){
     state.profiles.ja.reminders = {
       rano: {enabled: document.getElementById('swRano').classList.contains('on'), time: document.getElementById('timeRano').value},
       wieczor: {enabled: document.getElementById('swWieczor').classList.contains('on'), time: document.getElementById('timeWieczor').value}
@@ -1819,7 +1857,7 @@ async function exportToExcel(){
       {k:'Waga docelowa [kg]', v: profileState().settings.cel},
       {k:'Wzrost [cm]', v: profileState().settings.wzrost}
     ];
-    if(PROFILES_META[activeProfile()].hasReminders){
+    if(activeProfile() === 'ja'){
       settingsRows.push(
         {k:'Przypomnienie rano', v: state.profiles.ja.reminders.rano.enabled ? ('włączone, ' + state.profiles.ja.reminders.rano.time) : 'wyłączone'},
         {k:'Przypomnienie wieczór', v: state.profiles.ja.reminders.wieczor.enabled ? ('włączone, ' + state.profiles.ja.reminders.wieczor.time) : 'wyłączone'}

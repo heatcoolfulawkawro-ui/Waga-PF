@@ -56,36 +56,71 @@ Już ustawione na deployment `@1` istniejącego projektu Apps Script.
   cykliczne wydarzenia w Kalendarzu Google (skrypt działa "jako właściciel",
   więc ma dostęp do jego kalendarza bez dodatkowego OAuth we frontendzie).
 
-## Dwa profile wagi: Ja / Beata
+## Trzy profile wagi: Ja / Beata / Żona
 Segmentowy przełącznik pod paskiem tytułowym (widoczny tylko w trybie ⚖️ Waga)
-przełącza CAŁY widok (Dashboard, Historia, Nowy pomiar) między dwoma
-niezależnymi zestawami danych, trzymanymi w `state.profiles.ja` /
-`state.profiles.beata`:
-- **Ja**: bez zmian względem wcześniejszej wersji — R/W wg godziny, dwuliniowy
-  wykres rano/wieczór, przypomnienia w kalendarzu.
+przełącza CAŁY widok (Dashboard, Historia, Nowy pomiar) między niezależnymi
+zestawami danych, trzymanymi w `state.profiles.ja` / `.beata` / `.zona`:
+- **Ja**: R/W wg godziny, dwuliniowy wykres rano/wieczór, własne przypomnienia
+  w Kalendarzu Google.
 - **Beata** (teściowa): jeden pomiar dziennie, bez podziału R/W (pola
   Godzina/Pora ukryte w formularzu i tabeli historii, wykres jednoliniowy),
   bez przypomnień w kalendarzu. Start: 101.50 kg / 20.09.2026, wzrost 152 cm,
-  cel 57.5 kg (górna granica prawidłowego BMI 24.9 dla tego wzrostu —
-  edytowalne w Ustawieniach).
+  cel 57.5 kg (górna granica prawidłowego BMI 24.9 dla tego wzrostu).
+- **Żona**: R/W i dwuliniowy wykres tak jak "Ja" (`hasReminders: true`
+  w `PROFILES_META` — to tylko flaga "ma podział rano/wieczór", nie "ma
+  własny kalendarz"), ale **bez własnej sekcji przypomnień w Ustawieniach**
+  — zostaje jedno, wspólne przypomnienie z profilu "Ja" (sekcja kalendarza
+  w Ustawieniach jest gated na `activeProfile()==='ja'`, nie na
+  `hasReminders`). Brak znanej wagi startowej przy starcie: profil rusza
+  bez żadnego pomiaru (cel 56 kg, wzrost 159 cm), a **pierwszy wpis, który
+  sama doda, automatycznie staje się jej punktem startowym** (bootstrap w
+  handlerze `btnSave` — patrz pułapka niżej o `startWaga: null`).
 
 **Backend bez zmian.** `Kod.gs` to generyczny magazyn klucz-wartość, więc
 obsługuje nowe klucze automatycznie:
-- `state_ja` / `state_beata` — pomiary i ustawienia per profil
+- `state_ja` / `state_beata` / `state_zona` — pomiary i ustawienia per profil
 - `training` — `exercises`/`workouts`, wspólne, niezależne od profilu wagi
-- `reminders` — `{rano, wieczor, trening}` w jednym obiekcie (rano/wieczór
-  zawsze z profilu "Ja"; Beata nie ma przypomnień)
+- `reminders` — `{rano, wieczor, trening}` w jednym obiekcie, zawsze tylko
+  z profilu "Ja" + wspólne przypomnienie treningowe — Żona i Beata nie mają
+  własnych wpisów w tym obiekcie (świadomie, na życzenie użytkownika: jedno
+  przypomnienie w kalendarzu wystarczy niezależnie od liczby profili wagi)
 
-Appka pobiera przy starcie oba profile wagi (`pullWeightState('ja')` i
-`pullWeightState('beata')`) plus dane treningowe (`pullTraining()`), więc
-przełączanie profilu w UI jest natychmiastowe (bez dodatkowego zapytania).
-Zapis (`pushState()`) zawsze wysyła aktywny profil wagi + trening razem.
+Appka pobiera przy starcie wszystkie profile wagi (`pullWeightState('ja')`,
+`pullWeightState('beata')`, `pullWeightState('zona')`) plus dane treningowe
+(`pullTraining()`), więc przełączanie profilu w UI jest natychmiastowe (bez
+dodatkowego zapytania). Zapis (`pushState()`) zawsze wysyła aktywny profil
+wagi + trening razem.
 
 Istniejący stan sprzed tej zmiany (płaska struktura `measurements`/`settings`/
-`reminders` bez `profiles`) jest migrowany automatycznie przy pierwszym
-uruchomieniu nowej wersji — `loadState()` wykrywa starą strukturę i przenosi
-ją do `profiles.ja`, `Beata` startuje ze świeżym seedem, `exercises`/
-`workouts` zostają bez zmian.
+`reminders` bez `profiles`, albo już zmigrowany do `profiles.ja`+`.beata` ale
+jeszcze bez `.zona`) jest migrowany/dopełniany automatycznie przy starcie —
+`loadState()` wykrywa obie stare struktury i dopełnia brakujące profile
+świeżym seedem; `exercises`/`workouts` zawsze przechodzą bez zmian.
+
+### Pułapka: profil bez żadnego pomiaru (`startWaga: null`)
+Ja/Beata zawsze mają co najmniej jeden zaszyty pomiar startowy, ale "Żona"
+startuje z **pustą** listą pomiarów i `settings.startWaga = null` (nie
+zgadywaliśmy jej wagi). `renderDashboard()` ma osobną, wczesną ścieżkę dla
+`startWaga === null` (same myślniki na dashboardzie, pusty wykres), a
+`btnSave` przy pierwszym, nie-edycyjnym zapisie dla profilu z `startWaga:
+null` sam ustawia `settings.startWaga`/`settings.startData` na ten pierwszy
+wpis. Jeśli dodajesz kolejny profil bez znanej wagi startowej — kopiuj ten
+wzorzec, nie wymyślaj liczby.
+
+### Pułapka: `resetAddForm()`/`resetTrainingAddForm()` wywoływane wielokrotnie ze scrolla
+Handler `scroll` na pagerze zakładek (`if(i === 2) resetAddForm();`) fireuje
+się dla KAŻDEGO zdarzenia scroll, które akurat zaokrągli się do indeksu 2 —
+a `scroll-behavior: smooth` generuje wiele takich zdarzeń podczas osiadania
+animacji, nie jedno. Dla profilu z istniejącymi pomiarami to niewidoczne
+(reset nadpisuje pole tą samą wartością), ale dla **pustego** profilu
+(`lastMeasurement() === null`) każdy taki dodatkowy reset czyści pole wagi
+na `''` — jeśli użytkownik zdążył już wpisać wagę tuż po przejściu na
+zakładkę "Nowy pomiar", jego wpis potrafił zniknąć tuż przed zapisaniem
+(złapane testem end-to-end na profilu "Żona", zanim ten profil istniał ten
+bug był niewidoczny). Naprawione przez pilnowanie poprzedniego indeksu
+(`lastWagaTabIndex`/`lastTreningTabIndex`) i odpalanie resetu tylko przy
+faktycznym PRZEJŚCIU na zakładkę 2, nie przy każdym scrollu, który tam akurat
+wyląduje.
 
 ## Zakładka Trening
 Przełącznik u góry ⚖️ Waga | 💪 Trening — osobny pager Dashboard/Historia/Nowy
