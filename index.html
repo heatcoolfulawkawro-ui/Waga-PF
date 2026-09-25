@@ -144,6 +144,7 @@ window.__wagapfVersionPromise = (function(){
     <div class="field"><input type="password" inputmode="numeric" id="pinGateInput" placeholder="PIN" autocomplete="off"></div>
     <div class="small" id="pinGateError" style="color:var(--red);display:none;margin-bottom:8px;">Błędny PIN — spróbuj ponownie.</div>
     <button class="btn primary" id="btnPinGateSubmit" style="width:100%;">Odblokuj</button>
+    <div style="text-align:center;margin-top:10px;"><a href="#" id="linkPinForgot" style="color:var(--ink-dim);font-size:.78rem;">Zapomniałeś PIN-u? Zresetuj przez e-mail</a></div>
   </div>
 </div>
 
@@ -1692,16 +1693,31 @@ async function submitPinGate(){
 document.getElementById('btnPinGateSubmit').addEventListener('click', submitPinGate);
 document.getElementById('pinGateInput').addEventListener('keydown', e => { if(e.key === 'Enter') submitPinGate(); });
 
-document.getElementById('btnOpenPinChange').addEventListener('click', () => {
+let pinChangeFromGate = false;
+function openPinChangeSheetShared(){
   document.getElementById('pinChangeStep1').classList.remove('hidden');
   document.getElementById('pinChangeStep2').classList.add('hidden');
   document.getElementById('pinChangeError').style.display = 'none';
   document.getElementById('pinResetCode').value = '';
   document.getElementById('pinResetNew').value = '';
   document.getElementById('pinChangeModal').classList.remove('hidden');
+}
+document.getElementById('btnOpenPinChange').addEventListener('click', () => {
+  pinChangeFromGate = false;
+  openPinChangeSheetShared();
 });
-document.getElementById('btnPinChangeCancel1').addEventListener('click', () => document.getElementById('pinChangeModal').classList.add('hidden'));
-document.getElementById('btnPinChangeCancel2').addEventListener('click', () => document.getElementById('pinChangeModal').classList.add('hidden'));
+document.getElementById('linkPinForgot').addEventListener('click', (e) => {
+  e.preventDefault();
+  hidePinGate();
+  openPinChangeSheetShared();
+  pinChangeFromGate = true;
+});
+function cancelPinChange(){
+  document.getElementById('pinChangeModal').classList.add('hidden');
+  if(pinChangeFromGate){ pinChangeFromGate = false; showPinGate(); }
+}
+document.getElementById('btnPinChangeCancel1').addEventListener('click', cancelPinChange);
+document.getElementById('btnPinChangeCancel2').addEventListener('click', cancelPinChange);
 
 document.getElementById('btnPinRequestCode').addEventListener('click', async () => {
   if(!isGasConfigured()){ alert('Brak konfiguracji serwera.'); return; }
@@ -1731,7 +1747,12 @@ document.getElementById('btnPinConfirmChange').addEventListener('click', async (
     const data = await res.json();
     if(!data.ok){ errEl.textContent = data.error || 'Błąd'; errEl.style.display = 'block'; return; }
     setPin(newPin);
+    pinChangeFromGate = false;
     document.getElementById('pinChangeModal').classList.add('hidden');
+    hidePinGate();
+    pullWeightState('ja');
+    pullWeightState('beata');
+    pullTraining();
     alert('PIN zmieniony.');
   }catch(e){ errEl.textContent = 'Brak połączenia.'; errEl.style.display = 'block'; }
 });
