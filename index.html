@@ -38,6 +38,10 @@ window.__wagapfVersionPromise = (function(){
   .sync{font-size:11px;color:var(--ink-dim);display:flex;align-items:center;gap:5px;}
   .sync.ok{color:var(--green);}
   .sync.err{color:var(--red);}
+  .sync .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-dim);flex:0 0 auto;}
+  .sync.ok .dot{background:var(--green);}
+  .sync.err .dot{background:var(--red);}
+  .sync.local .dot{background:var(--amber);}
   .gear{background:none;border:none;color:var(--amber);font-size:20px;padding:4px;cursor:pointer;}
   .dots{display:flex;justify-content:center;gap:6px;margin-bottom:6px;}
   .dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
@@ -172,7 +176,7 @@ window.__wagapfVersionPromise = (function(){
     <div class="label" id="appVersion" style="font-size:9px;margin-top:1px;">—</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <span class="sync" id="syncStatus">—</span>
+    <span class="sync" id="syncStatus"><span class="dot"></span><span id="syncText">—</span></span>
     <button class="gear" onclick="location.href='https://heatcoolfulawkawro-ui.github.io/'" title="Rozdzielacz" aria-label="Rozdzielacz" style="font-size:17px;">🏠</button>
     <button class="gear" id="btnSettings" aria-label="Ustawienia">&#9881;</button>
   </div>
@@ -660,7 +664,7 @@ function isGasConfigured(){ return GAS_URL && GAS_URL.indexOf('PASTE_YOUR') === 
 function setSync(status){
   const el = document.getElementById('syncStatus');
   el.className = 'sync ' + status;
-  el.textContent = status === 'ok' ? 'zapisano' : status === 'err' ? 'brak sieci' : 'lokalnie';
+  document.getElementById('syncText').textContent = status === 'ok' ? 'zapisano' : status === 'err' ? 'brak sieci' : 'lokalnie';
 }
 
 function pushState(){
