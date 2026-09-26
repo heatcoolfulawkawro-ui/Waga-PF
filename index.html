@@ -688,6 +688,10 @@ function pushState(){
   }).catch(()=>setSync('err'));
 }
 
+// Telefon wraca do zasięgu — appka sama dogania zaległy zapis, bez czekania
+// na kolejną ręczną zmianę.
+window.addEventListener('online', () => { pushState(); pushReminders(); });
+
 function pushReminders(){
   if(!isGasConfigured()) return Promise.resolve();
   return fetch(GAS_URL, {
