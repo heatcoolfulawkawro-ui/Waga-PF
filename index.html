@@ -1681,6 +1681,11 @@ async function submitPinGate(){
   if(!pinVal) return;
   const errEl = document.getElementById('pinGateError');
   errEl.style.display = 'none';
+  const btn = document.getElementById('btnPinGateSubmit');
+  if(btn.disabled) return; // już trwa sprawdzanie — ignoruj drugie kliknięcie
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = 'Sprawdzam…';
   try{
     const res = await fetch(GAS_URL + '?key=state_ja&pin=' + encodeURIComponent(pinVal));
     const text = await res.text();
@@ -1697,6 +1702,9 @@ async function submitPinGate(){
     // Offline — nie blokujemy dostępu do już zapisanych lokalnie danych.
     setPin(pinVal);
     hidePinGate();
+  }finally{
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 }
 document.getElementById('btnPinGateSubmit').addEventListener('click', submitPinGate);
