@@ -1755,14 +1755,11 @@ document.getElementById('btnPinConfirmChange').addEventListener('click', async (
     });
     const data = await res.json();
     if(!data.ok){ errEl.textContent = data.error || 'Błąd'; errEl.style.display = 'block'; return; }
-    setPin(newPin);
-    pinChangeFromGate = false;
     document.getElementById('pinChangeModal').classList.add('hidden');
-    hidePinGate();
-    pullWeightState('ja');
-    pullWeightState('beata');
-    pullTraining();
-    alert('PIN zmieniony.');
+    const wasFromGate = pinChangeFromGate;
+    pinChangeFromGate = false;
+    alert('Sprawdź maila i kliknij link, żeby dokończyć zmianę PIN-u — dopiero wtedy nowy PIN zacznie działać.');
+    if(wasFromGate) showPinGate();
   }catch(e){ errEl.textContent = 'Brak połączenia.'; errEl.style.display = 'block'; }
 });
 
