@@ -38,6 +38,10 @@ window.__wagapfVersionPromise = (function(){
   .sync{font-size:11px;color:var(--ink-dim);display:flex;align-items:center;gap:5px;}
   .sync.ok{color:var(--green);}
   .sync.err{color:var(--red);}
+  .sync .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-dim);flex:0 0 auto;}
+  .sync.ok .dot{background:var(--green);}
+  .sync.err .dot{background:var(--red);}
+  .sync.local .dot{background:var(--amber);}
   .gear{background:none;border:none;color:var(--amber);font-size:20px;padding:4px;cursor:pointer;}
   .dots{display:flex;justify-content:center;gap:6px;margin-bottom:6px;}
   .dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
@@ -138,13 +142,42 @@ window.__wagapfVersionPromise = (function(){
 </head>
 <body>
 
+<div class="modal-bg hidden" id="pinGateModal" style="align-items:center;z-index:60;">
+  <div class="modal" style="max-width:300px;border-radius:16px;">
+    <h3>🔒 Wpisz PIN</h3>
+    <div class="field"><input type="password" inputmode="numeric" id="pinGateInput" placeholder="PIN" autocomplete="off"></div>
+    <div class="small" id="pinGateError" style="color:var(--red);display:none;margin-bottom:8px;">Błędny PIN — spróbuj ponownie.</div>
+    <button class="btn primary" id="btnPinGateSubmit" style="width:100%;">Odblokuj</button>
+    <div style="text-align:center;margin-top:10px;"><a href="#" id="linkPinForgot" style="color:var(--ink-dim);font-size:.78rem;">Zapomniałeś PIN-u? Zresetuj przez e-mail</a></div>
+  </div>
+</div>
+
+<div class="modal-bg hidden" id="pinChangeModal" style="align-items:center;z-index:60;">
+  <div class="modal" style="max-width:340px;border-radius:16px;">
+    <h3>Zmień PIN</h3>
+    <div id="pinChangeStep1">
+      <div class="small" style="margin-bottom:12px;">Wyślemy jednorazowy kod na Twój e-mail.</div>
+      <button class="btn primary" id="btnPinRequestCode" style="width:100%;">Wyślij kod</button>
+      <button class="btn ghost" id="btnPinChangeCancel1" style="width:100%;margin-top:8px;">Anuluj</button>
+    </div>
+    <div id="pinChangeStep2" class="hidden">
+      <div class="field"><div class="label" style="margin-bottom:4px;">Kod z e-maila</div><input type="text" inputmode="numeric" id="pinResetCode" placeholder="6 cyfr"></div>
+      <div class="field"><div class="label" style="margin-bottom:4px;">Nowy PIN</div><input type="password" inputmode="numeric" id="pinResetNew" placeholder="np. 10 cyfr"></div>
+      <div class="small" id="pinChangeError" style="color:var(--red);display:none;margin-bottom:8px;"></div>
+      <button class="btn primary" id="btnPinConfirmChange" style="width:100%;">Zmień PIN</button>
+      <button class="btn ghost" id="btnPinChangeCancel2" style="width:100%;margin-top:8px;">Anuluj</button>
+    </div>
+  </div>
+</div>
+
 <div class="topbar">
   <div>
     <div class="title">Waga PF</div>
     <div class="label" id="appVersion" style="font-size:9px;margin-top:1px;">—</div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <span class="sync" id="syncStatus">—</span>
+    <span class="sync" id="syncStatus"><span class="dot"></span><span id="syncText">—</span></span>
+    <button class="gear" onclick="location.href='https://heatcoolfulawkawro-ui.github.io/'" title="Rozdzielacz" aria-label="Rozdzielacz" style="font-size:17px;">🏠</button>
     <button class="gear" id="btnSettings" aria-label="Ustawienia">&#9881;</button>
   </div>
 </div>
@@ -402,6 +435,11 @@ window.__wagapfVersionPromise = (function(){
       <button class="btn ghost" id="btnExportExcel">Eksportuj do Excela (.xlsx, z wykresami)</button>
     </div>
 
+    <div class="divider" style="margin-bottom:10px;">
+      <div class="label" style="margin-bottom:10px;">Bezpieczeństwo</div>
+      <button class="btn ghost" id="btnOpenPinChange">🔒 Zmień PIN</button>
+    </div>
+
     <button class="btn ghost" id="btnCloseSettings">Zamknij</button>
     <div class="test-link" id="btnTestSave">Test połączenia z Arkuszem</div>
   </div>
@@ -450,6 +488,26 @@ window.__wagapfVersionPromise = (function(){
 <script>
 // ---------- KONFIGURACJA ----------
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbz3-nc9P2jTv3pX2_aiP6Ne7A67QXtZHObP53BU3GNMIjgrThQSJtfaOCnBbGSGSRQI/exec';
+
+// ---------- PIN ----------
+const PIN_STORAGE_KEY = 'wagaPfPin';
+const AUTH_FAIL_TEXT = '__BRAK_AUTORYZACJI__';
+function getPin(){ return localStorage.getItem(PIN_STORAGE_KEY) || ''; }
+function setPin(p){ localStorage.setItem(PIN_STORAGE_KEY, p); }
+function clearPin(){ localStorage.removeItem(PIN_STORAGE_KEY); }
+function showPinGate(){
+  document.getElementById('pinGateModal').classList.remove('hidden');
+  document.getElementById('pinGateInput').focus();
+}
+function hidePinGate(){ document.getElementById('pinGateModal').classList.add('hidden'); }
+
+// Wołane po każdym pobraniu z Arkusza, gdy odpowiedź to sygnał złego PIN-u —
+// jeden punkt, z którego zawsze wraca do bramki zamiast cicho zostawiać
+// appkę bez świeżych danych.
+function handleAuthFail(){
+  clearPin();
+  showPinGate();
+}
 
 // ---------- DANE STARTOWE: PROFIL "JA" ----------
 const SEED_MEASUREMENTS_JA = [
@@ -627,7 +685,7 @@ function isGasConfigured(){ return GAS_URL && GAS_URL.indexOf('PASTE_YOUR') === 
 function setSync(status){
   const el = document.getElementById('syncStatus');
   el.className = 'sync ' + status;
-  el.textContent = status === 'ok' ? 'zapisano' : status === 'err' ? 'brak sieci' : 'lokalnie';
+  document.getElementById('syncText').textContent = status === 'ok' ? 'zapisano' : status === 'err' ? 'brak sieci' : 'lokalnie';
 }
 
 function pushState(){
@@ -638,15 +696,22 @@ function pushState(){
   const reqWeight = fetch(GAS_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'state_' + activeProfile(), value: JSON.stringify({measurements: p.measurements, settings: p.settings})})
-  });
+    body: JSON.stringify({key:'state_' + activeProfile(), value: JSON.stringify({measurements: p.measurements, settings: p.settings}), pin: getPin()})
+  }).then(r => r.json()).catch(() => null);
   const reqTraining = fetch(GAS_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'training', value: JSON.stringify({exercises: state.exercises, workouts: state.workouts})})
-  });
-  Promise.all([reqWeight, reqTraining]).then(()=>setSync('ok')).catch(()=>setSync('err'));
+    body: JSON.stringify({key:'training', value: JSON.stringify({exercises: state.exercises, workouts: state.workouts}), pin: getPin()})
+  }).then(r => r.json()).catch(() => null);
+  Promise.all([reqWeight, reqTraining]).then(results => {
+    if(results.some(r => r && r.ok === false)){ setSync('err'); handleAuthFail(); return; }
+    setSync('ok');
+  }).catch(()=>setSync('err'));
 }
+
+// Telefon wraca do zasięgu — appka sama dogania zaległy zapis, bez czekania
+// na kolejną ręczną zmianę.
+window.addEventListener('online', () => { pushState(); pushReminders(); });
 
 function pushReminders(){
   if(!isGasConfigured()) return Promise.resolve();
@@ -658,15 +723,16 @@ function pushReminders(){
       wieczor: state.profiles.ja.reminders.wieczor,
       trening: state.remindersTrening,
       posilek: state.remindersPosilek
-    })})
+    }), pin: getPin()})
   });
 }
 
 async function pullWeightState(profileKey){
   if(!isGasConfigured()) return;
   try{
-    const res = await fetch(GAS_URL + '?key=state_' + profileKey);
+    const res = await fetch(GAS_URL + '?key=state_' + profileKey + '&pin=' + encodeURIComponent(getPin()));
     const text = await res.text();
+    if(text === AUTH_FAIL_TEXT){ handleAuthFail(); return; }
     if(text){
       const parsed = JSON.parse(text);
       if(parsed && parsed.measurements){
@@ -683,8 +749,9 @@ async function pullWeightState(profileKey){
 async function pullTraining(){
   if(!isGasConfigured()) return;
   try{
-    const res = await fetch(GAS_URL + '?key=training');
+    const res = await fetch(GAS_URL + '?key=training&pin=' + encodeURIComponent(getPin()));
     const text = await res.text();
+    if(text === AUTH_FAIL_TEXT){ handleAuthFail(); return; }
     if(text){
       const parsed = JSON.parse(text);
       if(parsed && parsed.exercises){
@@ -1634,6 +1701,102 @@ document.getElementById('btnSettings').addEventListener('click', () => {
 });
 document.getElementById('btnCloseSettings').addEventListener('click', () => settingsModal.classList.add('hidden'));
 
+// ---------- PIN: bramka + zmiana ----------
+async function submitPinGate(){
+  const pinVal = document.getElementById('pinGateInput').value.trim();
+  if(!pinVal) return;
+  const errEl = document.getElementById('pinGateError');
+  errEl.style.display = 'none';
+  const btn = document.getElementById('btnPinGateSubmit');
+  if(btn.disabled) return; // już trwa sprawdzanie — ignoruj drugie kliknięcie
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = 'Sprawdzam…';
+  try{
+    const res = await fetch(GAS_URL + '?key=state_ja&pin=' + encodeURIComponent(pinVal));
+    const text = await res.text();
+    if(text === AUTH_FAIL_TEXT){
+      errEl.style.display = 'block';
+      return;
+    }
+    setPin(pinVal);
+    hidePinGate();
+    pullWeightState('ja');
+    pullWeightState('beata');
+    pullTraining();
+  }catch(e){
+    // Offline — nie blokujemy dostępu do już zapisanych lokalnie danych.
+    setPin(pinVal);
+    hidePinGate();
+  }finally{
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+document.getElementById('btnPinGateSubmit').addEventListener('click', submitPinGate);
+document.getElementById('pinGateInput').addEventListener('keydown', e => { if(e.key === 'Enter') submitPinGate(); });
+
+let pinChangeFromGate = false;
+function openPinChangeSheetShared(){
+  document.getElementById('pinChangeStep1').classList.remove('hidden');
+  document.getElementById('pinChangeStep2').classList.add('hidden');
+  document.getElementById('pinChangeError').style.display = 'none';
+  document.getElementById('pinResetCode').value = '';
+  document.getElementById('pinResetNew').value = '';
+  document.getElementById('pinChangeModal').classList.remove('hidden');
+}
+document.getElementById('btnOpenPinChange').addEventListener('click', () => {
+  pinChangeFromGate = false;
+  openPinChangeSheetShared();
+});
+document.getElementById('linkPinForgot').addEventListener('click', (e) => {
+  e.preventDefault();
+  hidePinGate();
+  openPinChangeSheetShared();
+  pinChangeFromGate = true;
+});
+function cancelPinChange(){
+  document.getElementById('pinChangeModal').classList.add('hidden');
+  if(pinChangeFromGate){ pinChangeFromGate = false; showPinGate(); }
+}
+document.getElementById('btnPinChangeCancel1').addEventListener('click', cancelPinChange);
+document.getElementById('btnPinChangeCancel2').addEventListener('click', cancelPinChange);
+
+document.getElementById('btnPinRequestCode').addEventListener('click', async () => {
+  if(!isGasConfigured()){ alert('Brak konfiguracji serwera.'); return; }
+  try{
+    const res = await fetch(GAS_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'request_pin_reset' })
+    });
+    const data = await res.json();
+    if(!data.ok){ alert(data.error || 'Nie udało się wysłać kodu'); return; }
+    document.getElementById('pinChangeStep1').classList.add('hidden');
+    document.getElementById('pinChangeStep2').classList.remove('hidden');
+  }catch(e){ alert('Brak połączenia.'); }
+});
+
+document.getElementById('btnPinConfirmChange').addEventListener('click', async () => {
+  const code = document.getElementById('pinResetCode').value.trim();
+  const newPin = document.getElementById('pinResetNew').value.trim();
+  const errEl = document.getElementById('pinChangeError');
+  errEl.style.display = 'none';
+  if(!code || !newPin){ errEl.textContent = 'Wpisz kod i nowy PIN.'; errEl.style.display = 'block'; return; }
+  try{
+    const res = await fetch(GAS_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ action:'confirm_pin_reset', code, newPin })
+    });
+    const data = await res.json();
+    if(!data.ok){ errEl.textContent = data.error || 'Błąd'; errEl.style.display = 'block'; return; }
+    document.getElementById('pinChangeModal').classList.add('hidden');
+    const wasFromGate = pinChangeFromGate;
+    pinChangeFromGate = false;
+    alert('Sprawdź maila i kliknij link, żeby dokończyć zmianę PIN-u — dopiero wtedy nowy PIN zacznie działać.');
+    if(wasFromGate) showPinGate();
+  }catch(e){ errEl.textContent = 'Brak połączenia.'; errEl.style.display = 'block'; }
+});
+
 function setSwitch(id, on){
   document.getElementById(id).classList.toggle('on', !!on);
 }
@@ -1697,9 +1860,13 @@ document.getElementById('btnTestSave').addEventListener('click', async () => {
     const res = await fetch(GAS_URL, {
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({key:'TEST', value:'HELLO_'+Date.now()})
+      body: JSON.stringify({key:'TEST', value:'HELLO_'+Date.now(), pin: getPin()})
     });
-    if(res.status === 200){
+    const testData = await res.clone().json().catch(() => null);
+    if(testData && testData.ok === false){
+      el.className = 'test-link err';
+      el.textContent = '✗ Zły PIN — wpisano go przy odblokowaniu inny niż aktualny';
+    } else if(res.status === 200){
       el.className = 'test-link ok';
       el.textContent = '✓ Połączenie z Arkuszem działa (200)';
     } else {
@@ -2032,9 +2199,13 @@ applyProfileUI();
 resetAddForm();
 resetTrainingAddForm();
 render();
-pullWeightState('ja');
-pullWeightState('beata');
-pullTraining();
+if(isGasConfigured() && !getPin()){
+  showPinGate();
+} else {
+  pullWeightState('ja');
+  pullWeightState('beata');
+  pullTraining();
+}
 
 if(window.__wagapfVersionPromise){
   window.__wagapfVersionPromise.then(function(v){
