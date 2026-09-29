@@ -173,16 +173,34 @@ w sekcji Ustawień (profil "Ja"), obok rano/wieczór/trening:
   (ten sam mechanizm co przy rano/wieczór/trening).
 
 ## Panel Ustawień — sekcje rozwijane (accordion)
-Sekcje "Przypomnienia w Kalendarzu Google" i "Ćwiczenia" w modalu Ustawień są
-domyślnie zwinięte (`accBodyReminders` / `accBodyExercises`, klasa `.hidden`)
-— klik w nagłówek (`accHeaderReminders` / `accHeaderExercises`,
-`toggleAccordion()`) je rozwija/zwija, strzałka się obraca (`.chev`,
-`.accordion-header.open`). Dodane po tym, jak na iOS Safari długa lista w
-`.modal-bg` (fixed, cała nakładka scrollowana) powodowała wizualne "miganie"
-przy przewijaniu razem ze zwijającym się paskiem adresu. Przy okazji `.modal`
-dostał `max-height:85vh; overflow-y:auto` — scrolluje się teraz sam modal,
-nie cała nakładka. Stan rozwinięcia nie resetuje się między otwarciami
-modala w tej samej sesji (to nieistotne, celowo tak zostawione).
+Trzy sekcje w modalu Ustawień są domyślnie zwinięte i kolorowo odróżnione
+(pasek + kropka przy nagłówku, żeby się nie "zlewały"):
+- **Waga i cel** (niebieski, `.acc-blue`) — waga startowa/docelowa/wzrost,
+  `accHeaderProfile`/`accBodyProfile`, własny przycisk „Zapisz"
+  (`btnSaveProfile` — zapisuje tylko te pola + `pushState()`, NIE rusza
+  przypomnień).
+- **Kalendarz** (bursztynowy, `.acc-amber`) — rano/wieczór/trening/okno
+  żywieniowe, `accHeaderReminders`/`accBodyReminders`, przycisk „Zapisz i
+  zaktualizuj kalendarz" (`btnSaveSettings` — zapisuje tylko przypomnienia +
+  `pushReminders()`) jest teraz WEWNĄTRZ tej sekcji, więc pokazuje się
+  dopiero po jej rozwinięciu (wcześniej widniał zawsze, myląco, przed
+  otwarciem sekcji).
+- **Ćwiczenia** (zielony, `.acc-green`) — `accHeaderExercises`/
+  `accBodyExercises`.
+
+Każdy nagłówek to `.accordion-header` (klik → `toggleAccordion()`, strzałka
+`.chev` się obraca). Żaden z dwóch przycisków „Zapisz" już nie zamyka
+modala automatycznie — są od siebie niezależne (można zmienić tylko wagę
+docelową bez dotykania Kalendarza i odwrotnie), więc auto-zamykanie
+byłoby mylące przy dwóch osobnych akcjach; modal zamyka się przyciskiem
+„Zamknij". Stan rozwinięcia nie resetuje się między otwarciami modala w
+tej samej sesji (to nieistotne, celowo tak zostawione).
+
+Dodane po tym, jak na iOS Safari długa, w pełni rozwinięta lista w
+`.modal-bg` (fixed, cała nakładka scrollowana) powodowała wizualne
+"miganie" przy przewijaniu razem ze zwijającym się paskiem adresu. Przy
+okazji `.modal` dostał `max-height:85vh; overflow-y:auto` — scrolluje się
+teraz sam modal, nie cała nakładka.
 
 Prawdziwą przyczyną migania (i niestabilnego działania samego accordionu na
 telefonie) był brak blokady scrolla tła pod modalem — na iOS Safari

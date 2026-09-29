@@ -93,9 +93,17 @@ window.__wagapfVersionPromise = (function(){
     width:100%;max-width:420px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
     overscroll-behavior:contain;}
   .accordion-header{display:flex;justify-content:space-between;align-items:center;
-    cursor:pointer;user-select:none;}
+    cursor:pointer;user-select:none;padding:6px 0;}
   .accordion-header .chev{display:inline-block;transition:transform .15s;color:var(--ink-dim);}
   .accordion-header.open .chev{transform:rotate(90deg);}
+  .accordion-header .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+    margin-right:8px;vertical-align:middle;}
+  .divider.acc-blue{border-left:3px solid var(--blue);padding-left:10px;}
+  .divider.acc-blue .dot{background:var(--blue);}
+  .divider.acc-amber{border-left:3px solid var(--amber);padding-left:10px;}
+  .divider.acc-amber .dot{background:var(--amber);}
+  .divider.acc-green{border-left:3px solid var(--green);padding-left:10px;}
+  .divider.acc-green .dot{background:var(--green);}
   .modal h3{margin:0 0 14px;font-size:15px;}
   .toggle-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .switch{width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;
@@ -376,22 +384,30 @@ window.__wagapfVersionPromise = (function(){
   <div class="modal">
     <h3 id="settingsTitle">Ustawienia</h3>
 
-    <div class="field">
-      <div class="label" style="margin-bottom:4px;">Waga startowa [kg]</div>
-      <input type="number" step="0.1" id="setStartWaga" placeholder="np. 90.0">
-    </div>
-    <div class="field">
-      <div class="label" style="margin-bottom:4px;">Waga docelowa [kg]</div>
-      <input type="number" step="0.1" id="setCel">
-    </div>
-    <div class="field">
-      <div class="label" style="margin-bottom:4px;">Wzrost [cm]</div>
-      <input type="number" step="1" id="setWzrost">
+    <div class="divider acc-blue" style="margin-bottom:10px;">
+      <div class="label accordion-header" id="accHeaderProfile" style="margin-bottom:10px;">
+        <span><span class="dot"></span>Waga i cel</span><span class="chev">▸</span>
+      </div>
+      <div id="accBodyProfile" class="hidden">
+        <div class="field">
+          <div class="label" style="margin-bottom:4px;">Waga startowa [kg]</div>
+          <input type="number" step="0.1" id="setStartWaga" placeholder="np. 90.0">
+        </div>
+        <div class="field">
+          <div class="label" style="margin-bottom:4px;">Waga docelowa [kg]</div>
+          <input type="number" step="0.1" id="setCel">
+        </div>
+        <div class="field">
+          <div class="label" style="margin-bottom:4px;">Wzrost [cm]</div>
+          <input type="number" step="1" id="setWzrost">
+        </div>
+        <button class="btn primary" id="btnSaveProfile">Zapisz</button>
+      </div>
     </div>
 
-    <div class="divider" style="margin-bottom:10px;">
+    <div class="divider acc-amber" style="margin-bottom:10px;">
       <div class="label accordion-header" id="accHeaderReminders" style="margin-bottom:10px;">
-        <span>Przypomnienia w Kalendarzu Google</span><span class="chev">▸</span>
+        <span><span class="dot"></span>Kalendarz</span><span class="chev">▸</span>
       </div>
 
       <div id="accBodyReminders" class="hidden">
@@ -428,14 +444,13 @@ window.__wagapfVersionPromise = (function(){
         </div>
         <input type="time" id="timePosilekStop" style="margin-bottom:6px;">
         <div class="small">Wyłączony przełącznik = wydarzenie usunięte z kalendarza</div>
+        <button class="btn primary" id="btnSaveSettings" style="margin-top:8px;">Zapisz i zaktualizuj kalendarz</button>
       </div>
     </div>
 
-    <button class="btn primary" id="btnSaveSettings">Zapisz i zaktualizuj kalendarz</button>
-
-    <div class="divider" style="margin-bottom:10px;">
+    <div class="divider acc-green" style="margin-bottom:10px;">
       <div class="label accordion-header" id="accHeaderExercises" style="margin-bottom:10px;">
-        <span>Ćwiczenia</span><span class="chev">▸</span>
+        <span><span class="dot"></span>Ćwiczenia</span><span class="chev">▸</span>
       </div>
       <div id="accBodyExercises" class="hidden">
         <div id="exerciseManageList"></div>
@@ -1720,6 +1735,7 @@ function toggleAccordion(headerId, bodyId){
   const nowHidden = body.classList.toggle('hidden');
   header.classList.toggle('open', !nowHidden);
 }
+document.getElementById('accHeaderProfile').addEventListener('click', () => toggleAccordion('accHeaderProfile', 'accBodyProfile'));
 document.getElementById('accHeaderReminders').addEventListener('click', () => toggleAccordion('accHeaderReminders', 'accBodyReminders'));
 document.getElementById('accHeaderExercises').addEventListener('click', () => toggleAccordion('accHeaderExercises', 'accBodyExercises'));
 
@@ -1867,9 +1883,8 @@ document.getElementById('swTrening').addEventListener('click', () => toggleSwitc
 document.getElementById('swPosilekStart').addEventListener('click', () => toggleSwitch('swPosilekStart'));
 document.getElementById('swPosilekStop').addEventListener('click', () => toggleSwitch('swPosilekStop'));
 
-document.getElementById('btnSaveSettings').addEventListener('click', async () => {
+document.getElementById('btnSaveProfile').addEventListener('click', async () => {
   const p = profileState();
-  const meta = PROFILES_META[activeProfile()];
   const startWagaVal = parseFloat(document.getElementById('setStartWaga').value);
   if(!isNaN(startWagaVal)){
     p.settings.startWaga = round2(startWagaVal);
@@ -1877,6 +1892,20 @@ document.getElementById('btnSaveSettings').addEventListener('click', async () =>
   }
   p.settings.cel = parseFloat(document.getElementById('setCel').value) || p.settings.cel;
   p.settings.wzrost = parseFloat(document.getElementById('setWzrost').value) || p.settings.wzrost;
+  persistLocal();
+  render();
+  const btn = document.getElementById('btnSaveProfile');
+  btn.textContent = 'Zapisywanie...';
+  try{
+    pushState();
+    btn.textContent = isGasConfigured() ? 'Zapisano' : 'Zapisano lokalnie (skonfiguruj GAS_URL)';
+  }catch(e){
+    btn.textContent = 'Błąd zapisu, spróbuj ponownie';
+  }
+  setTimeout(() => { btn.textContent = 'Zapisz'; }, 1400);
+});
+
+document.getElementById('btnSaveSettings').addEventListener('click', async () => {
   if(activeProfile() === 'ja'){
     state.profiles.ja.reminders = {
       rano: {enabled: document.getElementById('swRano').classList.contains('on'), time: document.getElementById('timeRano').value},
@@ -1889,21 +1918,15 @@ document.getElementById('btnSaveSettings').addEventListener('click', async () =>
     stop: {enabled: document.getElementById('swPosilekStop').classList.contains('on'), time: document.getElementById('timePosilekStop').value}
   };
   persistLocal();
-  render();
   const btn = document.getElementById('btnSaveSettings');
   btn.textContent = 'Zapisywanie...';
   try{
-    pushState();
     await pushReminders();
-    if(!isGasConfigured()){
-      btn.textContent = 'Zapisano lokalnie (skonfiguruj GAS_URL)';
-    } else {
-      btn.textContent = 'Zaktualizowano kalendarz';
-    }
+    btn.textContent = isGasConfigured() ? 'Zaktualizowano kalendarz' : 'Zapisano lokalnie (skonfiguruj GAS_URL)';
   }catch(e){
     btn.textContent = 'Błąd zapisu, spróbuj ponownie';
   }
-  setTimeout(() => { btn.textContent = 'Zapisz i zaktualizuj kalendarz'; settingsModal.classList.add('hidden'); }, 1400);
+  setTimeout(() => { btn.textContent = 'Zapisz i zaktualizuj kalendarz'; }, 1400);
 });
 
 document.getElementById('btnTestSave').addEventListener('click', async () => {
