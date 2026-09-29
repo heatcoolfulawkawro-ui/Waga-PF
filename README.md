@@ -156,6 +156,22 @@ wybranego profilu wagi).
 - Eksport do Excela (Ustawienia → Kopia zapasowa) dorzuca zakładki
   "Trening - Historia", "Trening - Ćwiczenia", "Trening - Wykresy".
 
+## Okno żywieniowe (16:8) — przypomnienia o jedzeniu
+Dwa dodatkowe, niezależnie przełączane przypomnienia w Kalendarzu Google,
+w sekcji Ustawień (profil "Ja"), obok rano/wieczór/trening:
+- **Start** — "możesz jeść" (domyślnie 10:00).
+- **Stop** — "przestań jeść" (domyślnie 18:00).
+- Stan trzymany w `state.remindersPosilek = {start:{enabled,time},
+  stop:{enabled,time}}` — osobno od `remindersTrening`, ale tym samym
+  wzorcem (globalne, nie per profil wagi).
+- Wysyłane do backendu jako `posilek: {start, stop}` w payloadzie klucza
+  `reminders` (obok `rano`/`wieczor`/`trening`), obsługiwane w `Kod.gs` →
+  `syncReminders()` przez dwa dodatkowe wywołania `syncOneReminder()`,
+  z ID serii zapisanymi jako `calendar_ids.posilek_start` /
+  `.posilek_stop`.
+- Wyłączenie przełącznika usuwa dane wydarzenie cykliczne z kalendarza
+  (ten sam mechanizm co przy rano/wieczór/trening).
+
 ## Znane pułapki (już zaadresowane w kodzie, ale warto wiedzieć)
 - POST z fetch() używa `Content-Type: text/plain;charset=utf-8` — omija to
   przekierowanie 302 Apps Script (które zamienia POST na GET) i CORS

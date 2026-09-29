@@ -74,6 +74,12 @@ function syncReminders(cfg) {
   ids.trening = syncOneReminder(cal, ids.trening, cfg.trening, 'Trening – czas na sesję',
     'Zrób trening i wpisz wynik w aplikacji Waga PF.');
 
+  const posilek = cfg.posilek || {};
+  ids.posilek_start = syncOneReminder(cal, ids.posilek_start, posilek.start, 'Okno żywieniowe – możesz jeść',
+    'Start okna żywieniowego 8h.');
+  ids.posilek_stop = syncOneReminder(cal, ids.posilek_stop, posilek.stop, 'Okno żywieniowe – koniec jedzenia',
+    'Koniec okna żywieniowego — zaczyna się 16h przerwy.');
+
   setStoredValue('calendar_ids', JSON.stringify(ids));
 }
 

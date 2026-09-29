@@ -372,7 +372,20 @@ window.__wagapfVersionPromise = (function(){
         <span style="font-size:13px;">Trening</span>
         <button class="switch" id="swTrening"><span class="knob"></span></button>
       </div>
-      <input type="time" id="timeTrening" style="margin-bottom:6px;">
+      <input type="time" id="timeTrening" style="margin-bottom:14px;">
+
+      <div class="label" style="margin-bottom:10px;">Okno żywieniowe (16:8)</div>
+      <div class="toggle-row">
+        <span style="font-size:13px;">Start (możesz jeść)</span>
+        <button class="switch" id="swPosilekStart"><span class="knob"></span></button>
+      </div>
+      <input type="time" id="timePosilekStart" style="margin-bottom:14px;">
+
+      <div class="toggle-row">
+        <span style="font-size:13px;">Koniec (przestań jeść)</span>
+        <button class="switch" id="swPosilekStop"><span class="knob"></span></button>
+      </div>
+      <input type="time" id="timePosilekStop" style="margin-bottom:6px;">
       <div class="small">Wyłączony przełącznik = wydarzenie usunięte z kalendarza</div>
     </div>
 
@@ -483,6 +496,11 @@ const DEFAULT_REMINDERS_JA = {
 
 const DEFAULT_REMINDERS_TRENING = {enabled:true, time:'20:00'};
 
+const DEFAULT_REMINDERS_POSILEK = {
+  start: {enabled:true, time:'10:00'},
+  stop: {enabled:true, time:'18:00'}
+};
+
 // ---------- DANE STARTOWE: PROFIL "BEATA" ----------
 // Cel BMI 24.9 (górna granica normy) * wzrost^2(1.52m) = ~57.5 kg. Edytowalne w Ustawieniach.
 const SEED_MEASUREMENTS_BEATA = [
@@ -542,6 +560,7 @@ function defaultState(){
       marek: { measurements: SEED_MEASUREMENTS_MAREK, settings: {...DEFAULT_SETTINGS_MAREK}, reminders: null }
     },
     remindersTrening: {...DEFAULT_REMINDERS_TRENING},
+    remindersPosilek: {...DEFAULT_REMINDERS_POSILEK},
     exercises: DEFAULT_EXERCISES,
     workouts: []
   };
@@ -558,6 +577,7 @@ function loadState(){
   if(parsed.profiles && parsed.profiles.ja && parsed.profiles.beata){
     // Już zmigrowany stan — dociągnij defensywnie ewentualne brakujące pola.
     if(!parsed.remindersTrening) parsed.remindersTrening = {...DEFAULT_REMINDERS_TRENING};
+    if(!parsed.remindersPosilek) parsed.remindersPosilek = {...DEFAULT_REMINDERS_POSILEK};
     if(!parsed.exercises) parsed.exercises = DEFAULT_EXERCISES;
     if(!parsed.workouts) parsed.workouts = [];
     if(!parsed.profiles.ja.reminders) parsed.profiles.ja.reminders = {...DEFAULT_REMINDERS_JA};
@@ -587,6 +607,7 @@ function loadState(){
         marek: { measurements: SEED_MEASUREMENTS_MAREK, settings: {...DEFAULT_SETTINGS_MAREK}, reminders: null }
       },
       remindersTrening: oldReminders.trening || {...DEFAULT_REMINDERS_TRENING},
+      remindersPosilek: oldReminders.posilek || {...DEFAULT_REMINDERS_POSILEK},
       exercises: parsed.exercises || DEFAULT_EXERCISES,
       workouts: parsed.workouts || []
     };
@@ -635,7 +656,8 @@ function pushReminders(){
     body: JSON.stringify({key:'reminders', value: JSON.stringify({
       rano: state.profiles.ja.reminders.rano,
       wieczor: state.profiles.ja.reminders.wieczor,
-      trening: state.remindersTrening
+      trening: state.remindersTrening,
+      posilek: state.remindersPosilek
     })})
   });
 }
@@ -1603,6 +1625,10 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   document.getElementById('timeWieczor').value = state.profiles.ja.reminders.wieczor.time;
   setSwitch('swTrening', state.remindersTrening.enabled);
   document.getElementById('timeTrening').value = state.remindersTrening.time;
+  setSwitch('swPosilekStart', state.remindersPosilek.start.enabled);
+  document.getElementById('timePosilekStart').value = state.remindersPosilek.start.time;
+  setSwitch('swPosilekStop', state.remindersPosilek.stop.enabled);
+  document.getElementById('timePosilekStop').value = state.remindersPosilek.stop.time;
   renderExerciseManageList();
   settingsModal.classList.remove('hidden');
 });
@@ -1619,6 +1645,8 @@ function toggleSwitch(id){
 document.getElementById('swRano').addEventListener('click', () => toggleSwitch('swRano'));
 document.getElementById('swWieczor').addEventListener('click', () => toggleSwitch('swWieczor'));
 document.getElementById('swTrening').addEventListener('click', () => toggleSwitch('swTrening'));
+document.getElementById('swPosilekStart').addEventListener('click', () => toggleSwitch('swPosilekStart'));
+document.getElementById('swPosilekStop').addEventListener('click', () => toggleSwitch('swPosilekStop'));
 
 document.getElementById('btnSaveSettings').addEventListener('click', async () => {
   const p = profileState();
@@ -1637,6 +1665,10 @@ document.getElementById('btnSaveSettings').addEventListener('click', async () =>
     };
   }
   state.remindersTrening = {enabled: document.getElementById('swTrening').classList.contains('on'), time: document.getElementById('timeTrening').value};
+  state.remindersPosilek = {
+    start: {enabled: document.getElementById('swPosilekStart').classList.contains('on'), time: document.getElementById('timePosilekStart').value},
+    stop: {enabled: document.getElementById('swPosilekStop').classList.contains('on'), time: document.getElementById('timePosilekStop').value}
+  };
   persistLocal();
   render();
   const btn = document.getElementById('btnSaveSettings');
