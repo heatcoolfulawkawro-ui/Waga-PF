@@ -90,7 +90,8 @@ window.__wagapfVersionPromise = (function(){
     align-items:flex-end;justify-content:center;z-index:50;}
   .modal-bg.hidden{display:none;}
   .modal{background:var(--panel2);border-radius:16px 16px 0 0;padding:18px;
-    width:100%;max-width:420px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    width:100%;max-width:420px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;}
   .accordion-header{display:flex;justify-content:space-between;align-items:center;
     cursor:pointer;user-select:none;}
   .accordion-header .chev{display:inline-block;transition:transform .15s;color:var(--ink-dim);}
@@ -1721,6 +1722,40 @@ function toggleAccordion(headerId, bodyId){
 }
 document.getElementById('accHeaderReminders').addEventListener('click', () => toggleAccordion('accHeaderReminders', 'accBodyReminders'));
 document.getElementById('accHeaderExercises').addEventListener('click', () => toggleAccordion('accHeaderExercises', 'accBodyExercises'));
+
+// Blokada przewijania tła, gdy otwarty jest jakikolwiek modal (.modal-bg bez
+// klasy hidden) — bez tego przeciąganie po modalu na iOS Safari potrafi
+// przewinąć zamiast niego stronę pod spodem (dashboard), a dotyk czasem
+// "przecieka" do elementów w tle zamiast trafić np. w nagłówek accordionu.
+(function(){
+  let locked = false;
+  let savedScrollY = 0;
+  function anyModalOpen(){
+    return Array.from(document.querySelectorAll('.modal-bg')).some(el => !el.classList.contains('hidden'));
+  }
+  function applyLock(){
+    const shouldLock = anyModalOpen();
+    if(shouldLock && !locked){
+      savedScrollY = window.scrollY || window.pageYOffset || 0;
+      document.body.style.position = 'fixed';
+      document.body.style.top = '-' + savedScrollY + 'px';
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      locked = true;
+    } else if(!shouldLock && locked){
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, savedScrollY);
+      locked = false;
+    }
+  }
+  document.querySelectorAll('.modal-bg').forEach(el => {
+    new MutationObserver(applyLock).observe(el, {attributes:true, attributeFilter:['class']});
+  });
+  applyLock();
+})();
 
 // ---------- PIN: bramka + zmiana ----------
 async function submitPinGate(){

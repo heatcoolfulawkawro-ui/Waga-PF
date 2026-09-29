@@ -184,6 +184,20 @@ dostał `max-height:85vh; overflow-y:auto` — scrolluje się teraz sam modal,
 nie cała nakładka. Stan rozwinięcia nie resetuje się między otwarciami
 modala w tej samej sesji (to nieistotne, celowo tak zostawione).
 
+Prawdziwą przyczyną migania (i niestabilnego działania samego accordionu na
+telefonie) był brak blokady scrolla tła pod modalem — na iOS Safari
+przeciąganie po `.modal-bg` bez tej blokady potrafi przewinąć stronę POD
+modalem zamiast samego modala, a dotyk "przecieka" do elementów w tle.
+Naprawione ogólnie dla wszystkich modali (`settingsModal`, `exerciseModal`,
+`pinGateModal`, `pinChangeModal`) przez `MutationObserver` obserwujący klasę
+`hidden` każdego `.modal-bg` — gdy którykolwiek jest otwarty, `<body>`
+dostaje `position:fixed` (z zapamiętanym `scrollY`, przywracanym po
+zamknięciu) zamiast samego `overflow:hidden`, bo samo `overflow:hidden` na
+`<body>` nie wystarcza na iOS Safari. Licznik przez `anyModalOpen()`
+(a nie prosty licznik open/close) poprawnie obsługuje układanie modali
+jedne na drugich (np. "+ Dodaj ćwiczenie" otwiera `exerciseModal` NAD
+wciąż otwartym `settingsModal`).
+
 ## Znane pułapki (już zaadresowane w kodzie, ale warto wiedzieć)
 - POST z fetch() używa `Content-Type: text/plain;charset=utf-8` — omija to
   przekierowanie 302 Apps Script (które zamienia POST na GET) i CORS
