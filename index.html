@@ -90,7 +90,11 @@ window.__wagapfVersionPromise = (function(){
     align-items:flex-end;justify-content:center;z-index:50;}
   .modal-bg.hidden{display:none;}
   .modal{background:var(--panel2);border-radius:16px 16px 0 0;padding:18px;
-    width:100%;max-width:420px;}
+    width:100%;max-width:420px;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  .accordion-header{display:flex;justify-content:space-between;align-items:center;
+    cursor:pointer;user-select:none;}
+  .accordion-header .chev{display:inline-block;transition:transform .15s;color:var(--ink-dim);}
+  .accordion-header.open .chev{transform:rotate(90deg);}
   .modal h3{margin:0 0 14px;font-size:15px;}
   .toggle-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
   .switch{width:38px;height:22px;border-radius:11px;background:var(--line);position:relative;
@@ -385,49 +389,57 @@ window.__wagapfVersionPromise = (function(){
     </div>
 
     <div class="divider" style="margin-bottom:10px;">
-      <div class="label" style="margin-bottom:10px;">Przypomnienia w Kalendarzu Google</div>
+      <div class="label accordion-header" id="accHeaderReminders" style="margin-bottom:10px;">
+        <span>Przypomnienia w Kalendarzu Google</span><span class="chev">▸</span>
+      </div>
 
-      <div id="remindersRWWrap">
-        <div class="toggle-row">
-          <span style="font-size:13px;">Rano (na czczo)</span>
-          <button class="switch" id="swRano"><span class="knob"></span></button>
+      <div id="accBodyReminders" class="hidden">
+        <div id="remindersRWWrap">
+          <div class="toggle-row">
+            <span style="font-size:13px;">Rano (na czczo)</span>
+            <button class="switch" id="swRano"><span class="knob"></span></button>
+          </div>
+          <input type="time" id="timeRano" style="margin-bottom:14px;">
+
+          <div class="toggle-row">
+            <span style="font-size:13px;">Wieczór</span>
+            <button class="switch" id="swWieczor"><span class="knob"></span></button>
+          </div>
+          <input type="time" id="timeWieczor" style="margin-bottom:14px;">
         </div>
-        <input type="time" id="timeRano" style="margin-bottom:14px;">
 
         <div class="toggle-row">
-          <span style="font-size:13px;">Wieczór</span>
-          <button class="switch" id="swWieczor"><span class="knob"></span></button>
+          <span style="font-size:13px;">Trening</span>
+          <button class="switch" id="swTrening"><span class="knob"></span></button>
         </div>
-        <input type="time" id="timeWieczor" style="margin-bottom:14px;">
-      </div>
+        <input type="time" id="timeTrening" style="margin-bottom:14px;">
 
-      <div class="toggle-row">
-        <span style="font-size:13px;">Trening</span>
-        <button class="switch" id="swTrening"><span class="knob"></span></button>
-      </div>
-      <input type="time" id="timeTrening" style="margin-bottom:14px;">
+        <div class="label" style="margin-bottom:10px;">Okno żywieniowe (16:8)</div>
+        <div class="toggle-row">
+          <span style="font-size:13px;">Start (możesz jeść)</span>
+          <button class="switch" id="swPosilekStart"><span class="knob"></span></button>
+        </div>
+        <input type="time" id="timePosilekStart" style="margin-bottom:14px;">
 
-      <div class="label" style="margin-bottom:10px;">Okno żywieniowe (16:8)</div>
-      <div class="toggle-row">
-        <span style="font-size:13px;">Start (możesz jeść)</span>
-        <button class="switch" id="swPosilekStart"><span class="knob"></span></button>
+        <div class="toggle-row">
+          <span style="font-size:13px;">Koniec (przestań jeść)</span>
+          <button class="switch" id="swPosilekStop"><span class="knob"></span></button>
+        </div>
+        <input type="time" id="timePosilekStop" style="margin-bottom:6px;">
+        <div class="small">Wyłączony przełącznik = wydarzenie usunięte z kalendarza</div>
       </div>
-      <input type="time" id="timePosilekStart" style="margin-bottom:14px;">
-
-      <div class="toggle-row">
-        <span style="font-size:13px;">Koniec (przestań jeść)</span>
-        <button class="switch" id="swPosilekStop"><span class="knob"></span></button>
-      </div>
-      <input type="time" id="timePosilekStop" style="margin-bottom:6px;">
-      <div class="small">Wyłączony przełącznik = wydarzenie usunięte z kalendarza</div>
     </div>
 
     <button class="btn primary" id="btnSaveSettings">Zapisz i zaktualizuj kalendarz</button>
 
     <div class="divider" style="margin-bottom:10px;">
-      <div class="label" style="margin-bottom:10px;">Ćwiczenia</div>
-      <div id="exerciseManageList"></div>
-      <button class="btn ghost" id="btnAddExercise" style="margin-top:8px;">+ Dodaj ćwiczenie</button>
+      <div class="label accordion-header" id="accHeaderExercises" style="margin-bottom:10px;">
+        <span>Ćwiczenia</span><span class="chev">▸</span>
+      </div>
+      <div id="accBodyExercises" class="hidden">
+        <div id="exerciseManageList"></div>
+        <button class="btn ghost" id="btnAddExercise" style="margin-top:8px;">+ Dodaj ćwiczenie</button>
+      </div>
     </div>
 
     <div class="divider" style="margin-bottom:10px;">
@@ -1700,6 +1712,15 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   settingsModal.classList.remove('hidden');
 });
 document.getElementById('btnCloseSettings').addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+function toggleAccordion(headerId, bodyId){
+  const body = document.getElementById(bodyId);
+  const header = document.getElementById(headerId);
+  const nowHidden = body.classList.toggle('hidden');
+  header.classList.toggle('open', !nowHidden);
+}
+document.getElementById('accHeaderReminders').addEventListener('click', () => toggleAccordion('accHeaderReminders', 'accBodyReminders'));
+document.getElementById('accHeaderExercises').addEventListener('click', () => toggleAccordion('accHeaderExercises', 'accBodyExercises'));
 
 // ---------- PIN: bramka + zmiana ----------
 async function submitPinGate(){

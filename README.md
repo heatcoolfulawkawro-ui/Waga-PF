@@ -172,6 +172,18 @@ w sekcji Ustawień (profil "Ja"), obok rano/wieczór/trening:
 - Wyłączenie przełącznika usuwa dane wydarzenie cykliczne z kalendarza
   (ten sam mechanizm co przy rano/wieczór/trening).
 
+## Panel Ustawień — sekcje rozwijane (accordion)
+Sekcje "Przypomnienia w Kalendarzu Google" i "Ćwiczenia" w modalu Ustawień są
+domyślnie zwinięte (`accBodyReminders` / `accBodyExercises`, klasa `.hidden`)
+— klik w nagłówek (`accHeaderReminders` / `accHeaderExercises`,
+`toggleAccordion()`) je rozwija/zwija, strzałka się obraca (`.chev`,
+`.accordion-header.open`). Dodane po tym, jak na iOS Safari długa lista w
+`.modal-bg` (fixed, cała nakładka scrollowana) powodowała wizualne "miganie"
+przy przewijaniu razem ze zwijającym się paskiem adresu. Przy okazji `.modal`
+dostał `max-height:85vh; overflow-y:auto` — scrolluje się teraz sam modal,
+nie cała nakładka. Stan rozwinięcia nie resetuje się między otwarciami
+modala w tej samej sesji (to nieistotne, celowo tak zostawione).
+
 ## Znane pułapki (już zaadresowane w kodzie, ale warto wiedzieć)
 - POST z fetch() używa `Content-Type: text/plain;charset=utf-8` — omija to
   przekierowanie 302 Apps Script (które zamienia POST na GET) i CORS
