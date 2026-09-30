@@ -38,8 +38,8 @@ programista — rób sam wszystko, co nie wymaga jego logowania.
 ## Wdrażanie — wszystko przez `git push` na `main`
 
 - **Frontend**: push → GitHub Pages publikuje samo (~1 min). Appka sama wykrywa
-  nową wersję (nagłówek `last-modified` strony, skrypt na górze `index.html`),
-  przeładowuje się i pokazuje wersję pod tytułem (`#appVersion`) — niczego nie
+  nową wersję (skrypt na górze `index.html`: porównuje `document.lastModified` TEJ strony z `last-modified` z `HEAD` i przy nowszej przeładowuje raz przez `?v=` (strażnik w sessionStorage, inne parametry URL zostają); od 30.09.2026 ten sam skrypt we wszystkich mini appkach)
+  i pokazuje wersję pod tytułem (`#appVersion`) — niczego nie
   ustawiaj ręcznie.
 - **Backend**: push zmieniający `Kod.gs` lub `appsscript.json` uruchamia
   `.github/workflows/deploy-gas.yml`: `clasp push -f` + `clasp deploy
