@@ -65,6 +65,13 @@ programista — rób sam wszystko, co nie wymaga jego logowania.
 - `localStorage` to natychmiastowy bufor, `fetch` do Arkusza idzie w tle — appka
   ma działać offline. W polach wpisywanych na telefonie nie przebudowuj DOM-u
   przy wpisywaniu (gubi fokus).
+- Synchronizacja (od 01.10.2026): niewysłane zmiany są oznaczane per klucz w `localStorage`
+  `wagaPfDirty` (`state_<profil>`, `training`, `reminders`). Wysyłamy tylko oznaczone klucze
+  (`pushState('weight'|'training')`, `pushDirty` po `online`); pobieranie (`pullWeightState`,
+  `pullTraining`) nie nadpisuje oznaczonego klucza, tylko najpierw go wysyła. Powrót do appki
+  (`visibilitychange`) dociąga aktywny profil i trening, o ile nie jest otwarte okno (`.modal-bg`).
+  Wcześniej `online` wysyłało cały stan z każdego telefonu, a zapis wagi wysyłał też trening —
+  stara kopia z jednego telefonu mogła skasować wpisy z drugiego.
 - Zmiana formatu danych w Arkuszu = migracja istniejących danych (patrz
   `loadState()`), nie rób jej mimochodem. Backend jest generyczny — nowe klucze
   nie wymagają zmian w `Kod.gs`.

@@ -725,54 +725,100 @@ function setSync(status){
   document.getElementById('syncText').textContent = status === 'ok' ? 'zapisano' : status === 'err' ? 'brak sieci' : 'lokalnie';
 }
 
-function pushState(){
-  persistLocal();
-  render();
-  if(!isGasConfigured()){ setSync('local'); return; }
-  const p = profileState();
-  const reqWeight = fetch(GAS_URL, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'state_' + activeProfile(), value: JSON.stringify({measurements: p.measurements, settings: p.settings}), pin: getPin()})
-  }).then(r => r.json()).catch(() => null);
-  const reqTraining = fetch(GAS_URL, {
-    method:'POST',
-    headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'training', value: JSON.stringify({exercises: state.exercises, workouts: state.workouts}), pin: getPin()})
-  }).then(r => r.json()).catch(() => null);
-  Promise.all([reqWeight, reqTraining]).then(results => {
-    if(results.some(r => r && r.ok === false)){ setSync('err'); handleAuthFail(); return; }
-    setSync('ok');
-  }).catch(()=>setSync('err'));
+// „Brudne” klucze = zmiany zrobione na tym telefonie, których Arkusz jeszcze nie ma
+// (state_<profil>, training, reminders). Tylko je wolno wysłać, a pobrane z Arkusza
+// dane ich nie nadpisują — inaczej telefon ze starą kopią kasowałby wpisy z drugiego.
+const LS_DIRTY = 'wagaPfDirty';
+const dirtySeq = {};
+function dirtyKeys(){ try{ return JSON.parse(localStorage.getItem(LS_DIRTY)) || {}; }catch(e){ return {}; } }
+function isDirty(key){ return !!dirtyKeys()[key]; }
+function markDirty(key){
+  const d = dirtyKeys(); d[key] = 1;
+  dirtySeq[key] = (dirtySeq[key] || 0) + 1;
+  try{ localStorage.setItem(LS_DIRTY, JSON.stringify(d)); }catch(e){}
 }
-
-// Telefon wraca do zasięgu — appka sama dogania zaległy zapis, bez czekania
-// na kolejną ręczną zmianę.
-window.addEventListener('online', () => { pushState(); pushReminders(); });
-
-function pushReminders(){
-  if(!isGasConfigured()) return Promise.resolve();
+function clearDirty(key){
+  const d = dirtyKeys(); delete d[key];
+  try{ Object.keys(d).length ? localStorage.setItem(LS_DIRTY, JSON.stringify(d)) : localStorage.removeItem(LS_DIRTY); }catch(e){}
+}
+// Wartość pod danym kluczem Arkusza — zawsze z aktualnego stanu w telefonie.
+function keyValue(key){
+  if(key === 'training') return {exercises: state.exercises, workouts: state.workouts};
+  if(key === 'reminders') return {
+    rano: state.profiles.ja.reminders.rano,
+    wieczor: state.profiles.ja.reminders.wieczor,
+    trening: state.remindersTrening,
+    posilek: state.remindersPosilek
+  };
+  const p = state.profiles[key.slice('state_'.length)];
+  return {measurements: p.measurements, settings: p.settings};
+}
+function sendKey(key){
+  const seq = dirtySeq[key];
   return fetch(GAS_URL, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body: JSON.stringify({key:'reminders', value: JSON.stringify({
-      rano: state.profiles.ja.reminders.rano,
-      wieczor: state.profiles.ja.reminders.wieczor,
-      trening: state.remindersTrening,
-      posilek: state.remindersPosilek
-    }), pin: getPin()})
+    body: JSON.stringify({key: key, value: JSON.stringify(keyValue(key)), pin: getPin()})
+  }).then(r => r.json()).then(out => {
+    if(out && out.ok === true && dirtySeq[key] === seq) clearDirty(key);  // w międzyczasie nowa zmiana? zostaje do wysłania
+    return out;
   });
+}
+function reportPush(results){
+  if(results.some(r => r && r.ok === false)){ setSync('err'); handleAuthFail(); return; }
+  setSync(results.some(r => !r) ? 'err' : 'ok');
+}
+
+// what: 'weight' (pomiary i ustawienia aktywnego profilu), 'training' albo nic = oba.
+function pushState(what){
+  persistLocal();
+  render();
+  const keys = what === 'weight' ? ['state_' + activeProfile()] : what === 'training' ? ['training'] : ['state_' + activeProfile(), 'training'];
+  keys.forEach(markDirty);
+  if(!isGasConfigured()){ setSync('local'); return; }
+  Promise.all(keys.map(k => sendKey(k).catch(() => null))).then(reportPush);
+}
+
+// Wyślij wszystko, czego Arkusz jeszcze nie ma (np. zmiany zrobione bez zasięgu).
+let pushingDirty = null;
+function pushDirty(){
+  if(!isGasConfigured() || !getPin()) return Promise.resolve();
+  if(pushingDirty) return pushingDirty;
+  const keys = Object.keys(dirtyKeys()).filter(k => k === 'training' || k === 'reminders' || state.profiles[k.slice('state_'.length)]);
+  if(!keys.length) return Promise.resolve();
+  pushingDirty = Promise.all(keys.map(k => sendKey(k).catch(() => null))).then(reportPush).finally(() => { pushingDirty = null; });
+  return pushingDirty;
+}
+
+// Telefon wraca do zasięgu — wysyłamy tylko zmiany zrobione na tym telefonie
+// (do 01.10.2026 szedł cały stan, także stara kopia bez żadnych zmian).
+window.addEventListener('online', pushDirty);
+
+// Powrót do appki — dociągnij świeże dane, chyba że otwarte jest okno (ustawienia, PIN, ćwiczenie).
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden || !isGasConfigured() || !getPin()) return;
+  pushDirty();
+  if(document.querySelector('.modal-bg:not(.hidden)')) return;
+  pullWeightState(activeProfile());
+  pullTraining();
+});
+
+function pushReminders(){
+  markDirty('reminders');
+  if(!isGasConfigured()) return Promise.resolve();
+  return sendKey('reminders');
 }
 
 async function pullWeightState(profileKey){
   if(!isGasConfigured()) return;
+  if(isDirty('state_' + profileKey)) return pushDirty(); // najpierw oddaj Arkuszowi zmiany z tego telefonu
   try{
     const res = await fetch(GAS_URL + '?key=state_' + profileKey + '&pin=' + encodeURIComponent(getPin()));
     const text = await res.text();
     if(text === AUTH_FAIL_TEXT){ handleAuthFail(); return; }
     if(text){
       const parsed = JSON.parse(text);
-      if(parsed && parsed.measurements){
+      if(parsed && parsed.measurements && !isDirty('state_' + profileKey)){ // zmiana w trakcie pobierania wygrywa
         state.profiles[profileKey].measurements = parsed.measurements;
         state.profiles[profileKey].settings = parsed.settings || state.profiles[profileKey].settings;
         persistLocal();
@@ -783,15 +829,25 @@ async function pullWeightState(profileKey){
   }catch(e){ setSync('err'); }
 }
 
+// Start i dobry PIN: zaległe zmiany na serwer, świeże dane do telefonu (także aktywny profil spoza ja/beata).
+function pullStart(){
+  pushDirty();
+  pullWeightState('ja');
+  pullWeightState('beata');
+  if(activeProfile() !== 'ja' && activeProfile() !== 'beata') pullWeightState(activeProfile());
+  pullTraining();
+}
+
 async function pullTraining(){
   if(!isGasConfigured()) return;
+  if(isDirty('training')) return pushDirty();
   try{
     const res = await fetch(GAS_URL + '?key=training&pin=' + encodeURIComponent(getPin()));
     const text = await res.text();
     if(text === AUTH_FAIL_TEXT){ handleAuthFail(); return; }
     if(text){
       const parsed = JSON.parse(text);
-      if(parsed && parsed.exercises){
+      if(parsed && parsed.exercises && !isDirty('training')){
         state.exercises = parsed.exercises;
         state.workouts = parsed.workouts || state.workouts;
         persistLocal();
@@ -1192,7 +1248,7 @@ document.getElementById('btnSave').addEventListener('click', () => {
     }
     p.measurements.push({id:uid(), waga:round2(wagaVal), data:dataVal, godzina:godzinaVal, pora});
   }
-  pushState();
+  pushState('weight');
   resetAddForm();
   goToTab(1);
 });
@@ -1202,7 +1258,7 @@ document.getElementById('btnCancelEdit').addEventListener('click', () => { reset
 window.deleteEntry = function(id){
   if(!confirm('Usunąć ten pomiar?')) return;
   profileState().measurements = profileState().measurements.filter(x => x.id !== id);
-  pushState();
+  pushState('weight');
 };
 window.startEdit = startEdit;
 
@@ -1569,7 +1625,7 @@ window.startEditWorkout = function(id){
 window.deleteWorkout = function(id){
   if(!confirm('Usunąć ten wpis?')) return;
   state.workouts = state.workouts.filter(w => w.id !== id);
-  pushState();
+  pushState('training');
 };
 
 document.getElementById('btnTSave').addEventListener('click', () => {
@@ -1600,7 +1656,7 @@ document.getElementById('btnTSave').addEventListener('click', () => {
   } else {
     state.workouts.push({id: uid(), ...payload});
   }
-  pushState();
+  pushState('training');
   resetTrainingAddForm();
   goToTabT(1);
 });
@@ -1609,7 +1665,7 @@ document.getElementById('btnTDelete').addEventListener('click', () => {
   if(!editingWorkoutId) return;
   if(!confirm('Usunąć ten wpis?')) return;
   state.workouts = state.workouts.filter(w => w.id !== editingWorkoutId);
-  pushState();
+  pushState('training');
   resetTrainingAddForm();
   goToTabT(1);
 });
@@ -1694,7 +1750,7 @@ document.getElementById('btnSaveExercise').addEventListener('click', () => {
   } else {
     state.exercises.push({id: uid(), nazwa, typ, cel});
   }
-  pushState();
+  pushState('training');
   renderExerciseManageList();
   resetTrainingAddForm();
   exerciseModal.classList.add('hidden');
@@ -1707,7 +1763,7 @@ document.getElementById('btnDeleteExercise').addEventListener('click', () => {
   if(!confirm(msg)) return;
   state.exercises = state.exercises.filter(e => e.id !== editingExerciseId);
   state.workouts = state.workouts.filter(w => w.exerciseId !== editingExerciseId);
-  pushState();
+  pushState('training');
   renderExerciseManageList();
   resetTrainingAddForm();
   exerciseModal.classList.add('hidden');
@@ -1802,9 +1858,7 @@ async function submitPinGate(){
     }
     setPin(pinVal);
     hidePinGate();
-    pullWeightState('ja');
-    pullWeightState('beata');
-    pullTraining();
+    pullStart();
   }catch(e){
     // Offline — nie blokujemy dostępu do już zapisanych lokalnie danych.
     setPin(pinVal);
@@ -1906,7 +1960,7 @@ document.getElementById('btnSaveProfile').addEventListener('click', async () => 
   const btn = document.getElementById('btnSaveProfile');
   btn.textContent = 'Zapisywanie...';
   try{
-    pushState();
+    pushState('weight');
     btn.textContent = isGasConfigured() ? 'Zapisano' : 'Zapisano lokalnie (skonfiguruj GAS_URL)';
   }catch(e){
     btn.textContent = 'Błąd zapisu, spróbuj ponownie';
@@ -2290,9 +2344,7 @@ render();
 if(isGasConfigured() && !getPin()){
   showPinGate();
 } else {
-  pullWeightState('ja');
-  pullWeightState('beata');
-  pullTraining();
+  pullStart();
 }
 
 if(window.__wagapfVersionPromise){
